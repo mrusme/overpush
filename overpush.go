@@ -53,6 +53,13 @@ func main() {
 		ReduceMemoryUsage:       false,      // TODO: Make configurable
 		ServerHeader:            "AmazonS3", // Let's distract script kiddies
 		AppName:                 "overpush",
+		ErrorHandler: func(c fiber.Ctx, err error) error {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"errors":  []string{err.Error()},
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		},
 	})
 	fiberApp.Use(fiberzap.New(fiberzap.Config{
 		Logger: logger,
