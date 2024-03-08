@@ -7,12 +7,14 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/mrusme/overpush/api/messages"
 	fiberadapter "github.com/mrusme/overpush/fiberadapter"
 	"github.com/mrusme/overpush/fiberzap"
 
 	"go.uber.org/zap"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
@@ -65,13 +67,8 @@ func main() {
 		Logger: logger,
 	}))
 	fiberApp.Use(requestid.New())
-
-	fiberApp.Post("/1/messages.json", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status":  1,
-			"request": requestid.FromContext(c),
-		})
-	})
+	fiberApp.Use(cors.New())
+	messages.New(fiberApp)
 
 	functionName := os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
 
