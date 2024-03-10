@@ -1,8 +1,13 @@
 package messages
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"github.com/hibiken/asynq"
 )
 
 type Messages struct {
@@ -26,8 +31,52 @@ type Request struct {
 	URLTitle         string `json:"url_title",validate:""`
 }
 
-func New(app *fiber.App) {
+func New(app *fiber.App, ac *asynq.Client) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
 	app.Post("/1/messages.json", func(c fiber.Ctx) error {
+		req := new(Request)
+
+		bound := c.Bind()
+
+		if err := bound.Body(req); err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		if err := validate.Struct(req); err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		fmt.Printf("Req:\n%v\n\n", req)
+
+		payload, err := json.Marshal(req)
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		info, err := ac.Enqueue(asynq.NewTask("message", payload))
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		fmt.Printf("Enqueued:\n%v\n\n", info)
+
 		return c.JSON(fiber.Map{
 			"status":  1,
 			"request": requestid.FromContext(c),

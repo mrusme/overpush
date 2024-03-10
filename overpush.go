@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/api/messages"
 	fiberadapter "github.com/mrusme/overpush/fiberadapter"
 	"github.com/mrusme/overpush/fiberzap"
@@ -44,6 +45,13 @@ func AWSLambdaHandler(
 }
 
 func main() {
+	ac := asynq.NewClient(asynq.RedisClientOpt{
+		Addr:     os.Getenv("REDIS"),
+		Username: os.Getenv("REDIS_USERNAME"),
+		Password: os.Getenv("REDIS_PASSWORD"),
+	})
+	defer ac.Close()
+
 	// var err error
 	fiberApp := fiber.New(fiber.Config{
 		StrictRouting:           false,
@@ -68,7 +76,7 @@ func main() {
 	}))
 	fiberApp.Use(requestid.New())
 	fiberApp.Use(cors.New())
-	messages.New(fiberApp)
+	messages.New(fiberApp, ac)
 
 	functionName := os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
 
