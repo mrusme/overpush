@@ -2,11 +2,13 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -30,6 +32,7 @@ func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
 	api := new(API)
 
 	api.cfg = cfg
+	api.log = log
 
 	api.app = fiber.New(fiber.Config{
 		StrictRouting:           false,
@@ -54,7 +57,7 @@ func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
 	}))
 	api.app.Use(requestid.New())
 	api.app.Use(cors.New())
-	messages.New(api.app, api.redis)
+	api.attachRoutes()
 
 	return api, nil
 }
@@ -66,6 +69,56 @@ func (api *API) AWSLambdaHandler(
 	var fiberLambda *fiberadapter.FiberLambda
 	fiberLambda = fiberadapter.New(api.app)
 	return fiberLambda.ProxyWithContext(ctx, req)
+}
+
+func (api *API) attachRoutes() {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	api.app.Post("/1/messages.json", func(c fiber.Ctx) error {
+		req := new(messages.Request)
+
+		bound := c.Bind()
+
+		if err := bound.Body(req); err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		if err := validate.Struct(req); err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		payload, err := json.Marshal(req)
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
+		_, err = api.redis.Enqueue(asynq.NewTask("message", payload))
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"status":  1,
+			"request": requestid.FromContext(c),
+		})
+	})
 }
 
 func (api *API) Run() error {

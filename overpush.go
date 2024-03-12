@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/mrusme/overpush/api"
 	"github.com/mrusme/overpush/lib"
+	"github.com/mrusme/overpush/worker"
 
 	"go.uber.org/zap"
 )
@@ -27,6 +28,9 @@ func main() {
 	defer logger.Sync()
 	// TODO: Use sugarLogger
 	// sugar := logger.Sugar()
+
+	wrk, err := worker.New(&config, logger)
+	go wrk.Run()
 
 	apiServer, err := api.New(&config, logger)
 	if err != nil {
