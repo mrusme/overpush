@@ -124,11 +124,19 @@ func (api *API) attachRoutes() {
 }
 
 func (api *API) Run() error {
-	api.redis = asynq.NewClient(asynq.RedisClientOpt{
-		Addr:     api.cfg.Redis.Connection,
-		Username: api.cfg.Redis.Username,
-		Password: api.cfg.Redis.Password,
-	})
+	if api.cfg.Redis.Cluster == false {
+		api.redis = asynq.NewClient(asynq.RedisClientOpt{
+			Addr:     api.cfg.Redis.Connection,
+			Username: api.cfg.Redis.Username,
+			Password: api.cfg.Redis.Password,
+		})
+	} else {
+		api.redis = asynq.NewClient(asynq.RedisClusterClientOpt{
+			Addrs:    api.cfg.Redis.Connections,
+			Username: api.cfg.Redis.Username,
+			Password: api.cfg.Redis.Password,
+		})
+	}
 	defer api.redis.Close()
 
 	functionName := os.Getenv("AWS_LAMBDA_FUNCTION_NAME")

@@ -10,9 +10,13 @@ type Config struct {
 	Debug string
 
 	Redis struct {
-		Connection string
-		Username   string
-		Password   string
+		Connection  string
+		Connections []string
+		Username    string
+		Password    string
+		Cluster     bool
+		Failover    bool
+		Concurrency int
 	}
 
 	Server struct {
@@ -44,6 +48,9 @@ func Cfg() (Config, error) {
 	viper.SetDefault("Redis.Connection", "localhost:6380")
 	viper.SetDefault("Redis.Username", "default")
 	viper.SetDefault("Redis.Password", "")
+	viper.SetDefault("Redis.Cluster", "false")
+	viper.SetDefault("Redis.Failover", "false")
+	viper.SetDefault("Redis.Concurrency", "1")
 
 	viper.SetDefault("Server.BindIP", "127.0.0.1")
 	viper.SetDefault("Server.Port", "8080")
