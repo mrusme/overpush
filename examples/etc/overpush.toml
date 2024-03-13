@@ -1,0 +1,37 @@
+Debug = false
+
+[Redis]
+Connection = "redis-1337.c10.us-east-1-1.ec2.cloud.redislabs.com:1337"
+Username = "default"
+Password = "passwordOfTheRedisUser"
+Cluster = false
+Failover = false
+# MasterName = ""  # Only required when Failover = true
+# Connections = [] # Only required when Cluster = true or Failover = true
+Concurrency = 1
+
+[Server]
+BindIP = "127.0.0.1" # Make it 0.0.0.0 if you want to expose it to the world
+                     # without using an HTTPS terminating proxy in front
+Port = 8080
+
+[[Users]]
+Key = "YourPushoverUserKeyHere"
+
+  [[Users.Applications]]
+  Token = "YourPushoverApplicationTokenHere"
+  Name = "Zsh"
+  IconPath = "/some/icon.png"
+  Target = "your_target_xmpp"
+
+[[Targets]]
+ID = "your_target_xmpp"
+Type = "xmpp"
+
+  [Targets.Args]
+  server = "conversations.im"
+  tls = "false"
+  username = "your_overpush_account@conversations.im"
+  password = "YourOverpushAccountPassword"
+  destination = "you@your-xmpp-server.im"
+
