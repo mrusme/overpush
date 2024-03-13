@@ -1,5 +1,7 @@
 package messages
 
+import "fmt"
+
 type Request struct {
 	Token   string `json:"token",validate:"required,printascii"`
 	User    string `json:"user",validate:"required,printascii"`
@@ -16,4 +18,32 @@ type Request struct {
 	TTL              int    `json:"ttl",validate:""`
 	URL              string `json:"url",validate:"http_url"`
 	URLTitle         string `json:"url_title",validate:""`
+}
+
+func (msg *Request) ToString() string {
+	var s string = ""
+
+	s = fmt.Sprintf(
+		"%s\n\n%s\n",
+		msg.Title,
+		msg.Message,
+	)
+
+	if msg.URLTitle != "" {
+		s = fmt.Sprintf(
+			"%s\n%s",
+			s,
+			msg.URLTitle,
+		)
+	}
+
+	if msg.URL != "" {
+		s = fmt.Sprintf(
+			"%s\n%s",
+			s,
+			msg.URL,
+		)
+	}
+
+	return s
 }

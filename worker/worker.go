@@ -2,11 +2,16 @@ package worker
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/lib"
+	"github.com/xmppo/go-xmpp"
 	"go.uber.org/zap"
 )
 
@@ -53,5 +58,72 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	}
 
 	wrk.log.Debug("Working on message", zap.ByteString("payload", t.Payload()))
+
+	var execErr error
+	for _, user := range wrk.cfg.Users {
+		if user.Key == m.User {
+			for _, app := range user.Applications {
+				if app.Token == m.Token {
+					for _, target := range wrk.cfg.Targets {
+						if app.Target == target.ID {
+							switch target.Type {
+							case "xmpp":
+								execErr = wrk.ExecuteXMPP(target.Args, m)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return execErr
+}
+
+func (wrk *Worker) ExecuteXMPP(args map[string]string, m messages.Request) error {
+	var jabber *xmpp.Client
+
+	xmppServer := args["server"]
+	xmppTLS, err := strconv.ParseBool(args["tls"])
+	if err != nil {
+		xmppTLS = true
+	}
+	xmppUsername := args["username"]
+	xmppPassword := args["password"]
+	destinationUsername := args["destination"]
+
+	xmpp.DefaultConfig = &tls.Config{
+		ServerName:         strings.Split(xmppServer, ":")[0],
+		InsecureSkipVerify: false,
+	}
+
+	jabberOpts := xmpp.Options{
+		Host:          xmppServer,
+		User:          xmppUsername,
+		Password:      xmppPassword,
+		NoTLS:         !xmppTLS,
+		Debug:         false,
+		Session:       true,
+		Status:        "xa",
+		StatusMessage: "Pushing over ...",
+	}
+
+	jabber, err = jabberOpts.NewClient()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	defer jabber.Close()
+
+	_, err = jabber.Send(xmpp.Chat{
+		Remote: destinationUsername,
+		Type:   "chat",
+		Text:   m.ToString(),
+	})
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	return nil
 }
