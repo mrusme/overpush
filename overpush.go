@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+
 	"github.com/mrusme/overpush/api"
 	"github.com/mrusme/overpush/lib"
 	"github.com/mrusme/overpush/worker"
@@ -36,6 +39,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	go apiServer.Run()
 
-	apiServer.Run()
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+
+	wrk.Shutdown()
+	apiServer.Shutdown()
 }

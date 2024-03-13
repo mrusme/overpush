@@ -51,6 +51,11 @@ func (wrk *Worker) Run() {
 	}
 }
 
+func (wrk *Worker) Shutdown() error {
+	wrk.redis.Shutdown()
+	return nil
+}
+
 func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	var m messages.Request
 	if err := json.Unmarshal(t.Payload(), &m); err != nil {

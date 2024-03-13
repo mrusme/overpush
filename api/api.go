@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -137,13 +139,20 @@ func (api *API) Run() error {
 			api.cfg.Server.BindIP,
 			api.cfg.Server.Port,
 		)
-		api.log.Fatal(
-			"Server failed",
-			zap.Error(api.app.Listen(listenAddr)),
-		)
+		if err := api.app.Listen(listenAddr); err != nil && err != http.ErrServerClosed {
+			api.log.Fatal(
+				"Server failed",
+				zap.Error(err),
+			)
+		}
 	} else {
 		lambda.Start(api.AWSLambdaHandler)
 	}
 
+	return nil
+}
+
+func (api *API) Shutdown() error {
+	api.app.ShutdownWithTimeout(time.Second * 5)
 	return nil
 }
