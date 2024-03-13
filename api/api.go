@@ -125,11 +125,20 @@ func (api *API) attachRoutes() {
 
 func (api *API) Run() error {
 	if api.cfg.Redis.Cluster == false {
-		api.redis = asynq.NewClient(asynq.RedisClientOpt{
-			Addr:     api.cfg.Redis.Connection,
-			Username: api.cfg.Redis.Username,
-			Password: api.cfg.Redis.Password,
-		})
+		if api.cfg.Redis.Failover == false {
+			api.redis = asynq.NewClient(asynq.RedisClientOpt{
+				Addr:     api.cfg.Redis.Connection,
+				Username: api.cfg.Redis.Username,
+				Password: api.cfg.Redis.Password,
+			})
+		} else {
+			api.redis = asynq.NewClient(asynq.RedisFailoverClientOpt{
+				MasterName:    api.cfg.Redis.MasterName,
+				SentinelAddrs: api.cfg.Redis.Connections,
+				Username:      api.cfg.Redis.Username,
+				Password:      api.cfg.Redis.Password,
+			})
+		}
 	} else {
 		api.redis = asynq.NewClient(asynq.RedisClusterClientOpt{
 			Addrs:    api.cfg.Redis.Connections,

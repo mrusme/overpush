@@ -16,6 +16,7 @@ type Config struct {
 		Password    string
 		Cluster     bool
 		Failover    bool
+		MasterName  string
 		Concurrency int
 	}
 
@@ -50,6 +51,7 @@ func Cfg() (Config, error) {
 	viper.SetDefault("Redis.Password", "")
 	viper.SetDefault("Redis.Cluster", "false")
 	viper.SetDefault("Redis.Failover", "false")
+	viper.SetDefault("Redis.MasterName", "")
 	viper.SetDefault("Redis.Concurrency", "1")
 
 	viper.SetDefault("Server.BindIP", "127.0.0.1")

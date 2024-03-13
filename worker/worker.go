@@ -32,17 +32,32 @@ func New(cfg *lib.Config, log *zap.Logger) (*Worker, error) {
 
 func (wrk *Worker) Run() {
 	if wrk.cfg.Redis.Cluster == false {
-		wrk.redis = asynq.NewServer(
-			asynq.RedisClientOpt{
-				Addr:     wrk.cfg.Redis.Connection,
-				Username: wrk.cfg.Redis.Username,
-				Password: wrk.cfg.Redis.Password,
-			},
-			asynq.Config{
-				// Logger:      wrk.log,
-				Concurrency: wrk.cfg.Redis.Concurrency,
-			},
-		)
+		if wrk.cfg.Redis.Failover == false {
+			wrk.redis = asynq.NewServer(
+				asynq.RedisClientOpt{
+					Addr:     wrk.cfg.Redis.Connection,
+					Username: wrk.cfg.Redis.Username,
+					Password: wrk.cfg.Redis.Password,
+				},
+				asynq.Config{
+					// Logger:      wrk.log,
+					Concurrency: wrk.cfg.Redis.Concurrency,
+				},
+			)
+		} else {
+			wrk.redis = asynq.NewServer(
+				asynq.RedisFailoverClientOpt{
+					MasterName:    wrk.cfg.Redis.MasterName,
+					SentinelAddrs: wrk.cfg.Redis.Connections,
+					Username:      wrk.cfg.Redis.Username,
+					Password:      wrk.cfg.Redis.Password,
+				},
+				asynq.Config{
+					// Logger:      wrk.log,
+					Concurrency: wrk.cfg.Redis.Concurrency,
+				},
+			)
+		}
 	} else {
 		wrk.redis = asynq.NewServer(
 			asynq.RedisClusterClientOpt{
