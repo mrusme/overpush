@@ -7,8 +7,8 @@ builds:
       - darwin
       - linux
       # - netbsd
-      - openbsd
-      - freebsd
+      # - openbsd
+      # - freebsd
       # - plan9
       # - android
       # - windows
