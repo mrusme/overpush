@@ -6,12 +6,12 @@ builds:
     goos:
       - darwin
       - linux
-      - netbsd
+      # - netbsd
       - openbsd
       - freebsd
       # - plan9
       # - android
-      - windows
+      # - windows
     goarch:
       - 386
       - amd64

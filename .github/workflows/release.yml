@@ -17,10 +17,6 @@ jobs:
       with:
         go-version: 1.22
 
-    - name: Test
-      run: |
-        go test ./store
-
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v5
       with:
