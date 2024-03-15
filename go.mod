@@ -23,7 +23,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hibiken/asynq v0.24.1 // indirect
+	github.com/hibiken/asynq v0.24.2-0.20240315053219-8df0bfa5834b // indirect
 	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect

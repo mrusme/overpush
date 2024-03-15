@@ -6,9 +6,9 @@ builds:
     goos:
       - darwin
       - linux
-      # - netbsd
-      # - openbsd
-      # - freebsd
+      - netbsd
+      - openbsd
+      - freebsd
       # - plan9
       # - android
       # - windows
