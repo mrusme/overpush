@@ -4,8 +4,4 @@ daemon="/usr/local/bin/overpush"
 
 . /etc/rc.d/rc.subr
 
-rc_start() {
-  ${rcexec} "${daemon} ${daemon_flags} 2>&1 | logger -t overpush &"
-}
-
 rc_cmd $1
