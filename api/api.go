@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/hibiken/asynq"
+	"github.com/mrusme/overpush/api/grafana"
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/fiberzap"
 	"github.com/mrusme/overpush/lib"
@@ -82,7 +83,7 @@ func (api *API) attachRoutes() {
 		bound := c.Bind()
 
 		if err := bound.Body(req); err != nil {
-			return c.JSON(fiber.Map{
+			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
 				"error":   err.Error(),
 				"status":  0,
 				"request": requestid.FromContext(c),
@@ -90,7 +91,7 @@ func (api *API) attachRoutes() {
 		}
 
 		if err := validate.Struct(req); err != nil {
-			return c.JSON(fiber.Map{
+			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
 				"error":   err.Error(),
 				"status":  0,
 				"request": requestid.FromContext(c),
@@ -99,7 +100,7 @@ func (api *API) attachRoutes() {
 
 		payload, err := json.Marshal(req)
 		if err != nil {
-			return c.JSON(fiber.Map{
+			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
 				"error":   err.Error(),
 				"status":  0,
 				"request": requestid.FromContext(c),
@@ -109,7 +110,63 @@ func (api *API) attachRoutes() {
 		api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
 		_, err = api.redis.Enqueue(asynq.NewTask("message", payload))
 		if err != nil {
-			return c.JSON(fiber.Map{
+			return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"status":  1,
+			"request": requestid.FromContext(c),
+		})
+	})
+
+	api.app.Post("/grafana", func(c fiber.Ctx) error {
+		req := new(grafana.Request)
+
+		bound := c.Bind()
+
+		if err := bound.Body(req); err != nil {
+			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		req.User = c.Query("user")
+		req.Token = c.Query("token")
+
+		if err := validate.Struct(req); err != nil {
+			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		msg := new(messages.Request)
+		msg.User = req.User
+		msg.Token = req.Token
+		msg.Title = req.Title
+		msg.Message = req.Message
+		msg.URL = req.ExternalURL
+
+		payload, err := json.Marshal(msg)
+		if err != nil {
+			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
+		_, err = api.redis.Enqueue(asynq.NewTask("message", payload))
+		if err != nil {
+			return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
 				"error":   err.Error(),
 				"status":  0,
 				"request": requestid.FromContext(c),

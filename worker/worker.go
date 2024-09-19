@@ -40,7 +40,7 @@ func (wrk *Worker) Run() {
 					Password: wrk.cfg.Redis.Password,
 				},
 				asynq.Config{
-					// Logger:      wrk.log,
+					Logger:      wrk.log.Sugar(),
 					Concurrency: wrk.cfg.Redis.Concurrency,
 				},
 			)
@@ -53,7 +53,7 @@ func (wrk *Worker) Run() {
 					Password:      wrk.cfg.Redis.Password,
 				},
 				asynq.Config{
-					// Logger:      wrk.log,
+					Logger:      wrk.log.Sugar(),
 					Concurrency: wrk.cfg.Redis.Concurrency,
 				},
 			)
@@ -66,7 +66,7 @@ func (wrk *Worker) Run() {
 				Password: wrk.cfg.Redis.Password,
 			},
 			asynq.Config{
-				// Logger:      wrk.log,
+				Logger:      wrk.log.Sugar(),
 				Concurrency: wrk.cfg.Redis.Concurrency,
 			},
 		)

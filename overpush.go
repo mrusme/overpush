@@ -24,9 +24,15 @@ func main() {
 	}
 
 	if config.Debug == "true" {
-		logger, _ = zap.NewDevelopment()
+		logcfg := zap.NewDevelopmentConfig()
+		logcfg.OutputPaths = []string{"stdout"}
+		logcfg.Level.SetLevel(zap.DebugLevel)
+		logger, _ = logcfg.Build()
 	} else {
-		logger, _ = zap.NewProduction()
+		logcfg := zap.NewProductionConfig()
+		logcfg.OutputPaths = []string{"stdout"}
+		logcfg.Level.SetLevel(zap.InfoLevel)
+		logger, _ = logcfg.Build()
 	}
 	defer logger.Sync()
 	// TODO: Use sugarLogger
