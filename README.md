@@ -126,7 +126,9 @@ TODO
 TODO
 
 
-## Use
+## Use 
+
+### Pushover clients
 
 The [official Pushover API documentation](https://pushover.net/api#messages) 
 shows how to submit a message to the `/1/messages.json` endpoint. Replacing 
@@ -138,6 +140,21 @@ here](https://github.com/mrusme/dotfiles/blob/master/usr/local/bin/pushover)
 that you can use as a command-line API client for both, Pushover and Overpush, 
 to submit notifications. As Overpush does not yet have 100% feature parity, not 
 all features might be available.
+
+
+### Grafana
+
+Overpush supports a `/grafana` endpoint, that lets use add it as Grafana 
+*Contant point*. To do so, create a new contact point in your Grafana under 
+`/alerting/notifications/receivers/new`, choose the *Webhook* integration add 
+set your Overpush instance with the `/grafana` path as URL:
+
+```
+https://my.overpush.net/grafana?user=XXX&token=YYYY
+```
+
+Set the `user` and `token` parameters according to your Overpush configuration. 
+They represent the same values as your Pushover client credentials.
 
 
 ## FAQ
