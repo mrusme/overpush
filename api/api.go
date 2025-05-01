@@ -42,8 +42,8 @@ func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
 		CaseSensitive:           false,
 		Concurrency:             256 * 1024, // TODO: Make configurable
 		ProxyHeader:             "",         // TODO: Make configurable
-		EnableTrustedProxyCheck: false,      // TODO: Make configurable
-		TrustedProxies:          []string{}, // TODO: Make configurable
+		// EnableTrustedProxyCheck: false,      // TODO: Make configurable
+		// TrustedProxies:          []string{}, // TODO: Make configurable
 		ReduceMemoryUsage:       false,      // TODO: Make configurable
 		ServerHeader:            "AmazonS3", // Let's distract script kiddies
 		AppName:                 "overpush",
