@@ -22,7 +22,7 @@ import "fmt"
 //             "silenceURL": "http://stats.0xdead10.cc:3000/alerting/silence/new?alertmanager=grafana&matcher=alertname%3DTestAlert&matcher=instance%3DGrafana",
 //             "dashboardURL": "",
 //             "panelURL": "",
-//             "values": null,
+//             "values": {"A": 1, "B": 22},
 //             "valueString": "[ metric='foo' labels={instance=bar} value=10 ]"
 //         }
 //     ],
@@ -56,15 +56,15 @@ type Alert struct {
 	Annotations struct {
 		Summary string `json:"summary",validate:""`
 	} `json:"annotations",validate:""`
-	StartsAt     string `json:"startsAt",validate:""`
-	EndsAt       string `json:"endsAt",validate:""`
-	GeneratorURL string `json:"generatorURL",validate:"http_url"`
-	Fingerprint  string `json:"fingerprint",validate:""`
-	SilenceURL   string `json:"silenceURL",validate:"http_url"`
-	DashboardURL string `json:"dashboardURL",validate:"http_url"`
-	PanelURL     string `json:"panelURL",validate:"http_url"`
-	Values       string `json:"values",validate:""`
-	ValueString  string `json:"valueString",validate:""`
+	StartsAt     string         `json:"startsAt",validate:""`
+	EndsAt       string         `json:"endsAt",validate:""`
+	GeneratorURL string         `json:"generatorURL",validate:"http_url"`
+	Fingerprint  string         `json:"fingerprint",validate:""`
+	SilenceURL   string         `json:"silenceURL",validate:"http_url"`
+	DashboardURL string         `json:"dashboardURL",validate:"http_url"`
+	PanelURL     string         `json:"panelURL",validate:"http_url"`
+	Values       map[string]int `json:"values",validate:""`
+	ValueString  string         `json:"valueString",validate:""`
 }
 
 type Request struct {

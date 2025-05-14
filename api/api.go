@@ -128,7 +128,9 @@ func (api *API) attachRoutes() {
 
 		bound := c.Bind()
 
+		api.log.Debug("Received /grafana request, parsing ...")
 		if err := bound.Body(req); err != nil {
+			api.log.Error("Error parsing", zap.Error(err))
 			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
 				"error":   err.Error(),
 				"status":  0,
@@ -139,7 +141,9 @@ func (api *API) attachRoutes() {
 		req.User = c.Query("user")
 		req.Token = c.Query("token")
 
+		api.log.Debug("Validating /grafana request...")
 		if err := validate.Struct(req); err != nil {
+			api.log.Error("Error validating", zap.Error(err))
 			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
 				"error":   err.Error(),
 				"status":  0,
