@@ -1,5 +1,7 @@
 ## Overpush
 
+![Overpush](.README.md/overpush.png)
+
 A self-hosted, drop-in replacement for [Pushover](https://pushover.net), that
 uses XMPP as delivery method and offers the same API for submitting messages, so
 that existing setups (e.g. Grafana) can continue working and only require
