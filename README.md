@@ -125,14 +125,44 @@ Pushover with Overpush requires your tooling to be able to change the endpoint
 URL you your own server's.
 
 Please find an
-[example script here](https://github.com/mrusme/dotfiles/blob/master/usr/local/bin/pushover)
+[example script 
+here](https://github.com/mrusme/dotfiles/blob/master/usr/local/bin/overpush)
 that you can use as a command-line API client for both, Pushover and Overpush,
 to submit notifications. As Overpush does not yet have 100% feature parity, not
 all features might be available.
 
+### CrowdSec
+
+Overpush supports a `/crowdsec` endpoint, that lets users add it as CrowdSec 
+HTTP notification endpoint. To do so, edit the `notifications/http.yaml` (under 
+`/etc/crowdsec/notifications/http.yaml` or 
+`/usr/local/etc/crowdsec/notifications/http.yaml`) as follows:
+
+```yaml
+type: http
+name: http_default
+
+log_level: info
+
+format: |
+  {"alerts":{{.|toJson}}}
+
+url: https://my.overpush.net/crowdsec?user=XXX&token=YYY
+
+method: POST
+
+headers:
+  Content-Type: application/json
+
+# skip_tls_verification:  true 
+```
+
+Set the `user` and `token` parameters according to your Overpush configuration.
+They represent the same values as your Pushover client credentials.
+
 ### Grafana
 
-Overpush supports a `/grafana` endpoint, that lets use add it as Grafana
+Overpush supports a `/grafana` endpoint, that lets users add it as Grafana
 _Contant point_. To do so, create a new contact point in your Grafana under
 `/alerting/notifications/receivers/new`, choose the _Webhook_ integration add
 set your Overpush instance with the `/grafana` path as URL:

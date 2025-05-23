@@ -12,11 +12,11 @@ import (
 )
 
 func init() {
-
 }
 
 func main() {
 	var logger *zap.Logger
+	var err error
 
 	config, err := lib.Cfg()
 	if err != nil {
@@ -38,8 +38,11 @@ func main() {
 	// TODO: Use sugarLogger
 	// sugar := logger.Sugar()
 
-	wrk, err := worker.New(&config, logger)
-	go wrk.Run()
+	var wrk *worker.Worker
+	if config.Testing == false {
+		wrk, err = worker.New(&config, logger)
+		go wrk.Run()
+	}
 
 	apiServer, err := api.New(&config, logger)
 	if err != nil {
@@ -51,6 +54,8 @@ func main() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
-	wrk.Shutdown()
+	if config.Testing == false {
+		wrk.Shutdown()
+	}
 	apiServer.Shutdown()
 }

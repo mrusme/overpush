@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/hibiken/asynq"
+	"github.com/mrusme/overpush/api/crowdsec"
 	"github.com/mrusme/overpush/api/grafana"
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/fiberzap"
@@ -38,15 +39,15 @@ func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
 	api.log = log
 
 	api.app = fiber.New(fiber.Config{
-		StrictRouting:           false,
-		CaseSensitive:           false,
-		Concurrency:             256 * 1024, // TODO: Make configurable
-		ProxyHeader:             "",         // TODO: Make configurable
+		StrictRouting: false,
+		CaseSensitive: false,
+		Concurrency:   256 * 1024, // TODO: Make configurable
+		ProxyHeader:   "",         // TODO: Make configurable
 		// EnableTrustedProxyCheck: false,      // TODO: Make configurable
 		// TrustedProxies:          []string{}, // TODO: Make configurable
-		ReduceMemoryUsage:       false,      // TODO: Make configurable
-		ServerHeader:            "AmazonS3", // Let's distract script kiddies
-		AppName:                 "overpush",
+		ReduceMemoryUsage: false,      // TODO: Make configurable
+		ServerHeader:      "AmazonS3", // Let's distract script kiddies
+		AppName:           "overpush",
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"errors":  []string{err.Error()},
@@ -107,14 +108,16 @@ func (api *API) attachRoutes() {
 			})
 		}
 
-		api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
-		_, err = api.redis.Enqueue(asynq.NewTask("message", payload))
-		if err != nil {
-			return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
-				"error":   err.Error(),
-				"status":  0,
-				"request": requestid.FromContext(c),
-			})
+		if api.cfg.Testing == false {
+			api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
+			_, err = api.redis.Enqueue(asynq.NewTask("message", payload))
+			if err != nil {
+				return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
+					"error":   err.Error(),
+					"status":  0,
+					"request": requestid.FromContext(c),
+				})
+			}
 		}
 
 		return c.JSON(fiber.Map{
@@ -124,49 +127,69 @@ func (api *API) attachRoutes() {
 	})
 
 	api.app.Post("/grafana", func(c fiber.Ctx) error {
-		req := new(grafana.Request)
+		return generic[*grafana.Request](api, validate, c)
+	})
 
-		bound := c.Bind()
+	api.app.Post("/crowdsec", func(c fiber.Ctx) error {
+		return generic[*crowdsec.Request](api, validate, c)
+	})
+}
 
-		api.log.Debug("Received /grafana request, parsing ...")
-		if err := bound.Body(req); err != nil {
-			api.log.Error("Error parsing", zap.Error(err))
-			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-				"error":   err.Error(),
-				"status":  0,
-				"request": requestid.FromContext(c),
-			})
-		}
+type GenericRequest interface {
+	SetUser(string)
+	SetToken(string)
+	GetUser() string
+	GetToken() string
+	GetTitle() string
+	GetMessage() string
+	GetExternalURL() string
+	ToString() string
+}
 
-		req.User = c.Query("user")
-		req.Token = c.Query("token")
+func generic[T GenericRequest](api *API, validate *validator.Validate, c fiber.Ctx) error {
+	req := new(T)
+	bound := c.Bind()
 
-		api.log.Debug("Validating /grafana request...")
-		if err := validate.Struct(req); err != nil {
-			api.log.Error("Error validating", zap.Error(err))
-			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-				"error":   err.Error(),
-				"status":  0,
-				"request": requestid.FromContext(c),
-			})
-		}
+	api.log.Debug("Received generic request, parsing ...")
+	if err := bound.Body(req); err != nil {
+		api.log.Error("Error parsing", zap.Error(err))
+		return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+			"error":   err.Error(),
+			"status":  0,
+			"request": requestid.FromContext(c),
+		})
+	}
 
-		msg := new(messages.Request)
-		msg.User = req.User
-		msg.Token = req.Token
-		msg.Title = req.Title
-		msg.Message = req.Message
-		msg.URL = req.ExternalURL
+	(*req).SetUser(c.Query("user"))
+	(*req).SetToken(c.Query("token"))
 
-		payload, err := json.Marshal(msg)
-		if err != nil {
-			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-				"error":   err.Error(),
-				"status":  0,
-				"request": requestid.FromContext(c),
-			})
-		}
+	api.log.Debug("Validating generic request...")
+	if err := validate.Struct((*req)); err != nil {
+		api.log.Error("Error validating", zap.Error(err))
+		return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+			"error":   err.Error(),
+			"status":  0,
+			"request": requestid.FromContext(c),
+		})
+	}
 
+	msg := new(messages.Request)
+	msg.User = (*req).GetUser()
+	msg.Token = (*req).GetToken()
+	msg.Title = (*req).GetTitle()
+	msg.Message = (*req).GetMessage()
+	msg.URL = (*req).GetExternalURL()
+
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+			"error":   err.Error(),
+			"status":  0,
+			"request": requestid.FromContext(c),
+		})
+	}
+
+	if api.cfg.Testing == false {
 		api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
 		_, err = api.redis.Enqueue(asynq.NewTask("message", payload))
 		if err != nil {
@@ -176,38 +199,40 @@ func (api *API) attachRoutes() {
 				"request": requestid.FromContext(c),
 			})
 		}
+	}
 
-		return c.JSON(fiber.Map{
-			"status":  1,
-			"request": requestid.FromContext(c),
-		})
+	return c.JSON(fiber.Map{
+		"status":  1,
+		"request": requestid.FromContext(c),
 	})
 }
 
 func (api *API) Run() error {
-	if api.cfg.Redis.Cluster == false {
-		if api.cfg.Redis.Failover == false {
-			api.redis = asynq.NewClient(asynq.RedisClientOpt{
-				Addr:     api.cfg.Redis.Connection,
+	if api.cfg.Testing == false {
+		if api.cfg.Redis.Cluster == false {
+			if api.cfg.Redis.Failover == false {
+				api.redis = asynq.NewClient(asynq.RedisClientOpt{
+					Addr:     api.cfg.Redis.Connection,
+					Username: api.cfg.Redis.Username,
+					Password: api.cfg.Redis.Password,
+				})
+			} else {
+				api.redis = asynq.NewClient(asynq.RedisFailoverClientOpt{
+					MasterName:    api.cfg.Redis.MasterName,
+					SentinelAddrs: api.cfg.Redis.Connections,
+					Username:      api.cfg.Redis.Username,
+					Password:      api.cfg.Redis.Password,
+				})
+			}
+		} else {
+			api.redis = asynq.NewClient(asynq.RedisClusterClientOpt{
+				Addrs:    api.cfg.Redis.Connections,
 				Username: api.cfg.Redis.Username,
 				Password: api.cfg.Redis.Password,
 			})
-		} else {
-			api.redis = asynq.NewClient(asynq.RedisFailoverClientOpt{
-				MasterName:    api.cfg.Redis.MasterName,
-				SentinelAddrs: api.cfg.Redis.Connections,
-				Username:      api.cfg.Redis.Username,
-				Password:      api.cfg.Redis.Password,
-			})
 		}
-	} else {
-		api.redis = asynq.NewClient(asynq.RedisClusterClientOpt{
-			Addrs:    api.cfg.Redis.Connections,
-			Username: api.cfg.Redis.Username,
-			Password: api.cfg.Redis.Password,
-		})
+		defer api.redis.Close()
 	}
-	defer api.redis.Close()
 
 	functionName := os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
 

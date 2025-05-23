@@ -96,20 +96,48 @@ type Request struct {
 	Message         string `json:"message",validate:"required"`
 }
 
+func (msg *Request) SetToken(s string) {
+	msg.Token = s
+}
+
+func (msg *Request) SetUser(s string) {
+	msg.User = s
+}
+
+func (msg *Request) GetToken() string {
+	return msg.Token
+}
+
+func (msg *Request) GetUser() string {
+	return msg.User
+}
+
+func (msg *Request) GetTitle() string {
+	return msg.Title
+}
+
+func (msg *Request) GetMessage() string {
+	return msg.Message
+}
+
+func (msg *Request) GetExternalURL() string {
+	return msg.ExternalURL
+}
+
 func (msg *Request) ToString() string {
 	var s string = ""
 
 	s = fmt.Sprintf(
 		"%s\n\n%s\n",
-		msg.Title,
-		msg.Message,
+		msg.GetTitle(),
+		msg.GetMessage(),
 	)
 
-	if msg.ExternalURL != "" {
+	if msg.GetExternalURL() != "" {
 		s = fmt.Sprintf(
 			"%s\n%s",
 			s,
-			msg.ExternalURL,
+			msg.GetExternalURL(),
 		)
 	}
 

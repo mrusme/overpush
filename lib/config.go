@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Debug string
+	Testing bool
 
 	Redis struct {
 		Connection  string
@@ -45,6 +46,7 @@ type Config struct {
 
 func Cfg() (Config, error) {
 	viper.SetDefault("Debug", "false")
+	viper.SetDefault("Testing", "false")
 
 	viper.SetDefault("Redis.Connection", "localhost:6380")
 	viper.SetDefault("Redis.Username", "default")
