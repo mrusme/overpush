@@ -13,7 +13,7 @@ type Request struct {
 	Device           string `json:"device",validate:""`
 	HTML             int    `json:"html",validate:"min=0,max=1"`
 	Priority         int    `json:"priority",validate:"min=-2,max=2"`
-	Timestamp        int    `json:"timestamp",validate:""`
+	Timestamp        int64  `json:"timestamp",validate:""`
 	Title            string `json:"title",validate:""`
 	TTL              int    `json:"ttl",validate:""`
 	URL              string `json:"url",validate:"http_url"`

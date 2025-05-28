@@ -23,6 +23,17 @@ Key = "YourPushoverUserKeyHere"
   Name = "Zsh"
   IconPath = "/some/icon.png"
   Target = "your_target_xmpp"
+  Format = "pushover"
+
+  [[Users.Applications]]
+  Token = "SomeRandomUniqueTokenHere"
+  Name = "Grafana"
+  IconPath = "/some/icon.png"
+  Target = "your_target_xmpp"
+  Format = "custom"
+  CustomFormat.Message = "body.message"
+  CustomFormat.Title = "body.title"
+  CustomFormat.URL = "body.externalURL"
 
 [[Targets]]
 ID = "your_target_xmpp"

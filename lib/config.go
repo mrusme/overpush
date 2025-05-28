@@ -1,13 +1,88 @@
 package lib
 
 import (
+	"errors"
+	"reflect"
 	"strings"
 
+	"github.com/Jeffail/gabs/v2"
 	"github.com/spf13/viper"
 )
 
+type CFormat struct {
+	Attachment       string
+	AttachmentBase64 string
+	AttachmentType   string
+	Device           string
+	HTML             string
+	Message          string
+	Priority         string
+	TTL              string
+	Timestamp        string
+	Title            string
+	URL              string
+	URLTitle         string
+}
+
+func (cf *CFormat) GetLocationAndPath(str string) (string, string) {
+	loc, path, found := strings.Cut(str, ".")
+	if !found {
+		return "body", str
+	}
+	return loc, path
+}
+
+func (cf *CFormat) GetValue(
+	locations map[string]*gabs.Container,
+	fullpath string,
+) (string, bool) {
+	if fullpath == "" {
+		return "", false
+	}
+
+	loc, path := cf.GetLocationAndPath(fullpath)
+
+	location, ok := locations[loc]
+	if !ok {
+		return "", false
+	}
+
+	locctr := location.Path(path)
+	if locctr == nil {
+		return "", false
+	}
+
+	locctrData := locctr.Data()
+	if locctrData == nil {
+		return "", false
+	}
+	locctrType := reflect.TypeOf(locctrData).Kind()
+	switch locctrType {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		if reflect.ValueOf(locctrData).IsNil() {
+			return "", false
+		}
+	}
+
+	if locctrType == reflect.String {
+		return locctrData.(string), true
+	}
+
+	return locctr.String(), true
+}
+
+type Application struct {
+	Token        string
+	Name         string
+	IconPath     string
+	Format       string
+	CustomFormat CFormat
+
+	Target string
+}
+
 type Config struct {
-	Debug string
+	Debug   bool
 	Testing bool
 
 	Redis struct {
@@ -28,13 +103,7 @@ type Config struct {
 
 	Users []struct {
 		Key          string
-		Applications []struct {
-			Token    string
-			Name     string
-			IconPath string
-
-			Target string
-		}
+		Applications []Application
 	}
 
 	Targets []struct {
@@ -83,4 +152,30 @@ func Cfg() (Config, error) {
 	}
 
 	return config, nil
+}
+
+func (cfg *Config) GetUserKeyFromToken(token string) (string, error) {
+	for _, user := range cfg.Users {
+		for _, app := range user.Applications {
+			if app.Token == token {
+				return user.Key, nil
+			}
+		}
+	}
+
+	return "", errors.New("No user key for token found")
+}
+
+func (cfg *Config) GetApplication(userKey string, token string) (Application, error) {
+	for _, user := range cfg.Users {
+		if user.Key == userKey {
+			for _, app := range user.Applications {
+				if app.Token == token {
+					return app, nil
+				}
+			}
+		}
+	}
+
+	return Application{}, errors.New("No application for user/token found")
 }

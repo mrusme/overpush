@@ -131,10 +131,29 @@ that you can use as a command-line API client for both, Pushover and Overpush,
 to submit notifications. As Overpush does not yet have 100% feature parity, not
 all features might be available.
 
-### CrowdSec
+### Custom
 
-Overpush supports a `/crowdsec` endpoint, that lets users add it as CrowdSec 
-HTTP notification endpoint. To do so, edit the `notifications/http.yaml` (under 
+Overpush can handle all sorts of custom messages by configuring dedicated 
+applications in [its config](examples/etc/overpush.toml).
+
+Here are some examples:
+
+#### CrowdSec
+
+Add the following application to your Overpush config:
+
+```toml
+  [[Users.Applications]]
+  Token = "XXX"
+  Name = "CrowdSec"
+  IconPath = ""
+  Target = "your_target"
+  Format = "custom"
+  CustomFormat.Message = "body.alerts.0.message"
+  CustomFormat.Title = "body.alerts.0.scenario"
+```
+
+Edit the CrowdSec config `notifications/http.yaml` (under 
 `/etc/crowdsec/notifications/http.yaml` or 
 `/usr/local/etc/crowdsec/notifications/http.yaml`) as follows:
 
@@ -147,7 +166,7 @@ log_level: info
 format: |
   {"alerts":{{.|toJson}}}
 
-url: https://my.overpush.net/crowdsec?user=XXX&token=YYY
+url: https://my.overpush.net/XXX
 
 method: POST
 
@@ -157,22 +176,33 @@ headers:
 # skip_tls_verification:  true 
 ```
 
-Set the `user` and `token` parameters according to your Overpush configuration.
-They represent the same values as your Pushover client credentials.
+Set `XXX` to the unique token of the Overpush application.
 
-### Grafana
+#### Grafana
 
-Overpush supports a `/grafana` endpoint, that lets users add it as Grafana
-_Contant point_. To do so, create a new contact point in your Grafana under
+Add the following application to your Overpush config:
+
+```toml
+  [[Users.Applications]]
+  Token = "XXX"
+  Name = "Grafana"
+  IconPath = ""
+  Target = "your_target"
+  Format = "custom"
+  CustomFormat.Message = "body.message"
+  CustomFormat.Title = "body.title"
+  CustomFormat.URL = "body.externalURL"
+```
+
+Create a new contact point in your Grafana under
 `/alerting/notifications/receivers/new`, choose the _Webhook_ integration add
-set your Overpush instance with the `/grafana` path as URL:
+set your Overpush instance:
 
 ```
-https://my.overpush.net/grafana?user=XXX&token=YYYY
+https://my.overpush.net/XXX
 ```
 
-Set the `user` and `token` parameters according to your Overpush configuration.
-They represent the same values as your Pushover client credentials.
+Set `XXX` to the unique token of the Overpush application.
 
 ## FAQ
 

@@ -23,7 +23,7 @@ func main() {
 		panic(err)
 	}
 
-	if config.Debug == "true" {
+	if config.Debug == true {
 		logcfg := zap.NewDevelopmentConfig()
 		logcfg.OutputPaths = []string{"stdout"}
 		logcfg.Level.SetLevel(zap.DebugLevel)
