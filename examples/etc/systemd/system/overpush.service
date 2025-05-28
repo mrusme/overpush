@@ -1,0 +1,14 @@
+[Unit]
+Description=Overpush
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/overpush -config /etc/overpush.toml
+Restart=on-failure
+User=overpush
+Group=overpush
+
+[Install]
+WantedBy=multi-user.target
+

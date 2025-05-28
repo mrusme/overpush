@@ -1,5 +1,10 @@
 Debug = false
 
+[Server]
+BindIP = "127.0.0.1" # Make it 0.0.0.0 if you want to expose it to the world
+                     # without using an HTTPS terminating proxy in front
+Port = 8080
+
 [Redis]
 Connection = "redis-1337.c10.us-east-1-1.ec2.cloud.redislabs.com:1337"
 Username = "default"
@@ -10,14 +15,11 @@ Failover = false
 # Connections = [] # Only required when Cluster = true or Failover = true
 Concurrency = 1
 
-[Server]
-BindIP = "127.0.0.1" # Make it 0.0.0.0 if you want to expose it to the world
-                     # without using an HTTPS terminating proxy in front
-Port = 8080
-
 [[Users]]
 Key = "YourPushoverUserKeyHere"
 
+  # The URL for this application would be:
+  # http://your.server/1/messages.json
   [[Users.Applications]]
   Token = "YourPushoverApplicationTokenHere"
   Name = "Zsh"
@@ -25,6 +27,8 @@ Key = "YourPushoverUserKeyHere"
   Target = "your_target_xmpp"
   Format = "pushover"
 
+  # The URL for this application would be:
+  # http://your.server/SomeRandomUniqueTokenHere
   [[Users.Applications]]
   Token = "SomeRandomUniqueTokenHere"
   Name = "Grafana"
