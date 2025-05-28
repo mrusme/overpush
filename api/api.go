@@ -21,6 +21,7 @@ import (
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/fiberzap"
 	"github.com/mrusme/overpush/lib"
+	"github.com/mrusme/overpush/worker"
 	"go.uber.org/zap"
 
 	fiberadapter "github.com/mrusme/overpush/fiberadapter"
@@ -250,7 +251,20 @@ func (api *API) attachRoutes() {
 				})
 			}
 		} else {
-			api.log.Debug("Not enqueueing request", zap.ByteString("payload", payload))
+			api.log.Debug("Calling worker directly with request",
+				zap.ByteString("payload", payload))
+
+			wrk, err := worker.New(api.cfg, api.log)
+			if err != nil {
+				api.log.Error("Error calling worker directly", zap.Error(err))
+				return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
+					"error":   err.Error(),
+					"status":  0,
+					"request": requestid.FromContext(c),
+				})
+			}
+
+			wrk.HandleMessage(context.Background(), asynq.NewTask("message", payload))
 		}
 
 		return c.JSON(fiber.Map{

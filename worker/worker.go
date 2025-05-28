@@ -5,8 +5,11 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/api/messages"
@@ -103,6 +106,8 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 							switch target.Type {
 							case "xmpp":
 								execErr = wrk.ExecuteXMPP(target.Args, m)
+							case "apprise":
+								execErr = wrk.ExecuteApprise(target.Args, m)
 							}
 						}
 					}
@@ -156,6 +161,31 @@ func (wrk *Worker) ExecuteXMPP(args map[string]string, m messages.Request) error
 	})
 	if err != nil {
 		fmt.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func (wrk *Worker) ExecuteApprise(args map[string]string, m messages.Request) error {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	cmd := exec.CommandContext(
+		ctx,
+		"python",
+		args["apprise"],
+		"-vv",
+		"-t", m.Title,
+		"-b", m.Message,
+		args["connection"],
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	if err := cmd.Wait(); err != nil {
 		return err
 	}
 
