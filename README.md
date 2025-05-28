@@ -151,8 +151,8 @@ Add the following application to your Overpush config:
   IconPath = ""
   Target = "your_target"
   Format = "custom"
-  CustomFormat.Message = "body.alerts.0.message"
-  CustomFormat.Title = "body.alerts.0.scenario"
+  CustomFormat.Message = '{{ webhook "body.alerts.0.message" }}'
+  CustomFormat.Title = 'CrowdSec: {{ webhook "body.alerts.0.scenario" }}'
 ```
 
 Edit the CrowdSec config `notifications/http.yaml` (under 
@@ -191,9 +191,9 @@ Add the following application to your Overpush config:
   IconPath = ""
   Target = "your_target"
   Format = "custom"
-  CustomFormat.Message = "body.message"
-  CustomFormat.Title = "body.title"
-  CustomFormat.URL = "body.externalURL"
+  CustomFormat.Message = '{{ webhook "body.message" }}'
+  CustomFormat.Title = '{{ webhook "body.title" }}'
+  CustomFormat.URL = '{{ webhook "body.externalURL" }}'
 ```
 
 Create a new contact point in your Grafana under

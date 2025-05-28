@@ -1,9 +1,11 @@
 package lib
 
 import (
+	"bytes"
 	"errors"
 	"reflect"
 	"strings"
+	"text/template"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/spf13/viper"
@@ -34,41 +36,58 @@ func (cf *CFormat) GetLocationAndPath(str string) (string, string) {
 
 func (cf *CFormat) GetValue(
 	locations map[string]*gabs.Container,
-	fullpath string,
+	tmplstr string,
 ) (string, bool) {
-	if fullpath == "" {
+	if tmplstr == "" {
 		return "", false
 	}
 
-	loc, path := cf.GetLocationAndPath(fullpath)
+	funcs := template.FuncMap{
+		"webhook": func(fullpath string) any {
+			loc, path := cf.GetLocationAndPath(fullpath)
 
-	location, ok := locations[loc]
-	if !ok {
+			location, ok := locations[loc]
+			if !ok {
+				return ""
+			}
+
+			locctr := location.Path(path)
+			if locctr == nil {
+				return ""
+			}
+
+			locctrData := locctr.Data()
+			if locctrData == nil {
+				return ""
+			}
+			locctrType := reflect.TypeOf(locctrData).Kind()
+			switch locctrType {
+			case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+				if reflect.ValueOf(locctrData).IsNil() {
+					return ""
+				}
+			}
+
+			if locctrType == reflect.String {
+				return locctrData.(string)
+			}
+
+			return locctr.String()
+		},
+	}
+
+	tmpl, err := template.New("field").Funcs(funcs).Parse(tmplstr)
+	if err != nil {
 		return "", false
 	}
 
-	locctr := location.Path(path)
-	if locctr == nil {
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, nil)
+	if err != nil {
 		return "", false
 	}
 
-	locctrData := locctr.Data()
-	if locctrData == nil {
-		return "", false
-	}
-	locctrType := reflect.TypeOf(locctrData).Kind()
-	switch locctrType {
-	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
-		if reflect.ValueOf(locctrData).IsNil() {
-			return "", false
-		}
-	}
-
-	if locctrType == reflect.String {
-		return locctrData.(string), true
-	}
-
-	return locctr.String(), true
+	return buf.String(), true
 }
 
 type Application struct {

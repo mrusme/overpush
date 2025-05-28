@@ -31,9 +31,9 @@ Key = "YourPushoverUserKeyHere"
   IconPath = "/some/icon.png"
   Target = "your_target_xmpp"
   Format = "custom"
-  CustomFormat.Message = "body.message"
-  CustomFormat.Title = "body.title"
-  CustomFormat.URL = "body.externalURL"
+  CustomFormat.Message = '{{ webhook "body.message" }}'
+  CustomFormat.Title = '{{ webhook "body.title" }}'
+  CustomFormat.URL = '{{ webhook "body.externalURL" }}'
 
 [[Targets]]
 ID = "your_target_xmpp"
