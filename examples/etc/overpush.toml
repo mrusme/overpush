@@ -29,7 +29,7 @@ Key = "YourPushoverUserKeyHere"
   Token = "SomeRandomUniqueTokenHere"
   Name = "Grafana"
   IconPath = "/some/icon.png"
-  Target = "your_target_xmpp"
+  Target = "your_target_matrix"
   Format = "custom"
   CustomFormat.Message = '{{ webhook "body.message" }}'
   CustomFormat.Title = '{{ webhook "body.title" }}'
@@ -45,4 +45,12 @@ Type = "xmpp"
   username = "your_overpush_account@conversations.im"
   password = "YourOverpushAccountPassword"
   destination = "you@your-xmpp-server.im"
+
+[[Targets]]
+ID = "your_target_matrix"
+Type = "apprise"
+
+  [Targets.Args]
+  apprise = "/usr/local/bin/apprise"
+  connection = "matrixs://my_bot:hunter2@matrix.org:443/!xXxXxXxXXXxxxXXXxX:matrix.org?format=markdown"
 
