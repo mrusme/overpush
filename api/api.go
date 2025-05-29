@@ -17,6 +17,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/healthcheck"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/storage/redis/v3"
@@ -67,17 +68,25 @@ func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
 			})
 		},
 	})
-	api.app.Use(fiberzap.New(fiberzap.Config{
-		Logger: api.log,
-	}))
-	api.app.Use(requestid.New())
-	api.app.Use(cors.New())
 	api.attachRoutes()
 
 	return api, nil
 }
 
 func (api *API) LoadMiddlewares() error {
+	api.app.Use(fiberzap.New(fiberzap.Config{
+		Logger: api.log,
+	}))
+	api.app.Use(requestid.New())
+	api.app.Use(cors.New())
+
+	api.app.Get(fmt.Sprintf("/_internal%s", healthcheck.DefaultLivenessEndpoint),
+		healthcheck.NewHealthChecker())
+	api.app.Get(fmt.Sprintf("/_internal%s", healthcheck.DefaultReadinessEndpoint),
+		healthcheck.NewHealthChecker())
+	api.app.Get(fmt.Sprintf("/_internal%s", healthcheck.DefaultStartupEndpoint),
+		healthcheck.NewHealthChecker())
+
 	limiterCfg := limiter.Config{
 		Next: func(c fiber.Ctx) bool {
 			return c.IP() == "127.0.0.1"

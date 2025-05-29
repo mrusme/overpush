@@ -361,6 +361,20 @@ Target = "your_target"
 ...
 ```
 
+### Health Check
+
+Overpush provides the following URLs for health checks:
+
+- `/_internal/livez`: Checks if the server is up and running.
+- `/_internal/readyz`: Assesses if the application is ready to handle requests.
+- `/_internal/startupz`: Checks if the application has completed its startup
+  sequence and is ready to proceed with initialization and readiness checks.
+
+These endpoints can return the following HTTP status codes:
+
+- `200` _OK_
+- `503` _Service Unavailable_
+
 ## Run
 
 All that's needed is a [configuration](#configure) and Overpush can be launched:
