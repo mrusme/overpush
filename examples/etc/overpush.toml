@@ -44,17 +44,17 @@ ID = "your_target_xmpp"
 Type = "xmpp"
 
   [Targets.Args]
-  server = "conversations.im"
-  tls = "false"
-  username = "your_overpush_account@conversations.im"
-  password = "YourOverpushAccountPassword"
-  destination = "you@your-xmpp-server.im"
+  Server = "conversations.im"
+  TLS = "false"
+  Username = "your_overpush_account@conversations.im"
+  Password = "YourOverpushAccountPassword"
+  Destination = "you@your-xmpp-server.im"
 
 [[Targets]]
 ID = "your_target_matrix"
 Type = "apprise"
 
   [Targets.Args]
-  apprise = "/usr/bin/apprise"
-  connection = "matrixs://my_bot:hunter2@matrix.org:443/!xXxXxXxXXXxxxXXXxX:matrix.org?format=markdown"
+  Apprise = "/usr/bin/apprise"
+  Connection = "matrixs://my_bot:hunter2@matrix.org:443/!xXxXxXxXXXxxxXXXxX:matrix.org?format=markdown"
 
