@@ -426,7 +426,14 @@ $ systemctl --user enable --now overpush
 
 ### Docker
 
-TODO
+```sh
+$ docker run \
+  -d \
+  --name overpush \
+  -v "$(pwd)/overpush.toml:/etc/overpush.toml:ro" \
+  -p 8080:8080 \
+  ghcr.io/mrusme/overpush:latest
+```
 
 ### Kubernetes
 

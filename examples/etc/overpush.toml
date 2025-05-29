@@ -55,6 +55,6 @@ ID = "your_target_matrix"
 Type = "apprise"
 
   [Targets.Args]
-  apprise = "/usr/local/bin/apprise"
+  apprise = "/usr/bin/apprise"
   connection = "matrixs://my_bot:hunter2@matrix.org:443/!xXxXxXxXXXxxxXXXxX:matrix.org?format=markdown"
 
