@@ -24,8 +24,10 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/markusmobius/go-dateparser"
 	"github.com/mrusme/overpush/api/messages"
+	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/fiberzap"
-	"github.com/mrusme/overpush/lib"
+	"github.com/mrusme/overpush/models/application"
+	"github.com/mrusme/overpush/repositories"
 	"github.com/mrusme/overpush/worker"
 	"go.uber.org/zap"
 
@@ -33,47 +35,62 @@ import (
 )
 
 type API struct {
-	cfg   *lib.Config
+	cfg   *config.Config
 	log   *zap.Logger
+	repos repositories.Repositories
 	app   *fiber.App
 	redis *asynq.Client
 }
 
-func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
+func New(
+	cfg *config.Config,
+	log *zap.Logger,
+	repos repositories.Repositories,
+) (*API, error) {
 	api := new(API)
 
 	api.cfg = cfg
 	api.log = log
+	api.repos = repos
 
-	api.app = fiber.New(fiber.Config{
-		StrictRouting:      false,
-		CaseSensitive:      false,
-		BodyLimit:          api.cfg.Server.BodyLimit,
-		Concurrency:        api.cfg.Server.Concurrency,
-		ProxyHeader:        api.cfg.Server.ProxyHeader,
-		EnableIPValidation: api.cfg.Server.EnableIPValidation,
-		TrustProxy:         api.cfg.Server.TrustProxy,
-		TrustProxyConfig: fiber.TrustProxyConfig{
-			Loopback: api.cfg.Server.TrustLoopback,
-			Proxies:  api.cfg.Server.TrustProxies,
-		},
-		ReduceMemoryUsage: api.cfg.Server.ReduceMemoryUsage,
-		ServerHeader:      api.cfg.Server.ServerHeader,
-		AppName:           "overpush",
-		ErrorHandler: func(c fiber.Ctx, err error) error {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"errors":  []string{err.Error()},
-				"status":  0,
-				"request": requestid.FromContext(c),
-			})
-		},
-	})
-	api.attachRoutes()
+	if api.cfg.Server.Enable == true {
+		api.app = fiber.New(fiber.Config{
+			StrictRouting:      false,
+			CaseSensitive:      false,
+			BodyLimit:          api.cfg.Server.BodyLimit,
+			Concurrency:        api.cfg.Server.Concurrency,
+			ProxyHeader:        api.cfg.Server.ProxyHeader,
+			EnableIPValidation: api.cfg.Server.EnableIPValidation,
+			TrustProxy:         api.cfg.Server.TrustProxy,
+			TrustProxyConfig: fiber.TrustProxyConfig{
+				Loopback: api.cfg.Server.TrustLoopback,
+				Proxies:  api.cfg.Server.TrustProxies,
+			},
+			ReduceMemoryUsage: api.cfg.Server.ReduceMemoryUsage,
+			ServerHeader:      api.cfg.Server.ServerHeader,
+			AppName:           "overpush",
+			ErrorHandler: func(c fiber.Ctx, err error) error {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"errors":  []string{err.Error()},
+					"status":  0,
+					"request": requestid.FromContext(c),
+				})
+			},
+		})
+		api.attachRoutes()
+	}
 
 	return api, nil
 }
 
 func (api *API) LoadMiddlewares() error {
+	if api.cfg.Server.Enable == false {
+		api.log.Info("Server not enabled",
+			zap.Bool("Server.Enable", api.cfg.Server.Enable),
+		)
+		return nil
+	}
+
 	api.app.Use(fiberzap.New(fiberzap.Config{
 		Logger: api.log,
 	}))
@@ -173,7 +190,7 @@ func (api *API) attachRoutes() {
 		var token string
 		var msg *messages.Request
 		var appFormat string
-		var application lib.Application
+		var application application.Application
 		var err error
 
 		bound := c.Bind()
@@ -184,7 +201,7 @@ func (api *API) attachRoutes() {
 			appFormat = "pushover"
 		} else {
 			token = c.Params("token")
-			user, err = api.cfg.GetUserKeyFromToken(token)
+			user, err = api.repos.User.GetUserKeyFromToken(token)
 			if err != nil {
 				return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
 					"error":   err.Error(),
@@ -194,7 +211,7 @@ func (api *API) attachRoutes() {
 			}
 
 			api.log.Debug("Retrieving application ...")
-			application, err = api.cfg.GetApplication(user, token)
+			application, err = api.repos.User.GetApplication(user, token)
 			if err != nil {
 				return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
 					"error":   err.Error(),
@@ -342,7 +359,7 @@ func (api *API) attachRoutes() {
 			api.log.Debug("Calling worker directly with request",
 				zap.ByteString("payload", payload))
 
-			wrk, err := worker.New(api.cfg, api.log)
+			wrk, err := worker.New(api.cfg, api.log, api.repos)
 			if err != nil {
 				api.log.Error("Error calling worker directly", zap.Error(err))
 				return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
@@ -366,6 +383,13 @@ func (api *API) attachRoutes() {
 }
 
 func (api *API) Run() error {
+	if api.cfg.Server.Enable == false {
+		api.log.Info("Server not enabled",
+			zap.Bool("Server.Enable", api.cfg.Server.Enable),
+		)
+		return nil
+	}
+
 	if api.cfg.Testing == false {
 		if api.cfg.Redis.Cluster == false {
 			if api.cfg.Redis.Failover == false {
@@ -414,6 +438,12 @@ func (api *API) Run() error {
 }
 
 func (api *API) Shutdown() error {
+	if api.cfg.Server.Enable == false {
+		api.log.Info("Server not enabled",
+			zap.Bool("Server.Enable", api.cfg.Server.Enable),
+		)
+		return nil
+	}
 	api.app.ShutdownWithTimeout(time.Second * 5)
 	return nil
 }

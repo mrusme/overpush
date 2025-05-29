@@ -1,104 +1,14 @@
-package lib
+package config
 
 import (
-	"bytes"
 	"errors"
-	"reflect"
 	"strings"
-	"text/template"
 
-	"github.com/Jeffail/gabs/v2"
+	"github.com/mrusme/overpush/models/application"
+	"github.com/mrusme/overpush/models/target"
+	"github.com/mrusme/overpush/models/user"
 	"github.com/spf13/viper"
 )
-
-type CFormat struct {
-	Attachment       string
-	AttachmentBase64 string
-	AttachmentType   string
-	Device           string
-	HTML             string
-	Message          string
-	Priority         string
-	TTL              string
-	Timestamp        string
-	Title            string
-	URL              string
-	URLTitle         string
-}
-
-func (cf *CFormat) GetLocationAndPath(str string) (string, string) {
-	loc, path, found := strings.Cut(str, ".")
-	if !found {
-		return "body", str
-	}
-	return loc, path
-}
-
-func (cf *CFormat) GetValue(
-	locations map[string]*gabs.Container,
-	tmplstr string,
-) (string, bool) {
-	if tmplstr == "" {
-		return "", false
-	}
-
-	funcs := template.FuncMap{
-		"webhook": func(fullpath string) any {
-			loc, path := cf.GetLocationAndPath(fullpath)
-
-			location, ok := locations[loc]
-			if !ok {
-				return ""
-			}
-
-			locctr := location.Path(path)
-			if locctr == nil {
-				return ""
-			}
-
-			locctrData := locctr.Data()
-			if locctrData == nil {
-				return ""
-			}
-			locctrType := reflect.TypeOf(locctrData).Kind()
-			switch locctrType {
-			case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
-				if reflect.ValueOf(locctrData).IsNil() {
-					return ""
-				}
-			}
-
-			if locctrType == reflect.String {
-				return locctrData.(string)
-			}
-
-			return locctr.String()
-		},
-	}
-
-	tmpl, err := template.New("field").Funcs(funcs).Parse(tmplstr)
-	if err != nil {
-		return "", false
-	}
-
-	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, nil)
-	if err != nil {
-		return "", false
-	}
-
-	return buf.String(), true
-}
-
-type Application struct {
-	Token        string
-	Name         string
-	IconPath     string
-	Format       string
-	CustomFormat CFormat
-
-	Target string
-}
 
 type Config struct {
 	Debug   bool
@@ -142,16 +52,14 @@ type Config struct {
 		Enable bool
 	}
 
-	Users []struct {
-		Key          string
-		Applications []Application
+	Database struct {
+		Enable     bool
+		Connection string
 	}
 
-	Targets []struct {
-		ID   string
-		Type string
-		Args map[string]string
-	}
+	Users []user.User
+
+	Targets []target.Target
 }
 
 func Cfg() (Config, error) {
@@ -186,6 +94,10 @@ func Cfg() (Config, error) {
 	viper.SetDefault("Server.Limiter.UseRedis", "false")
 
 	viper.SetDefault("Worker.Enable", "true")
+
+	viper.SetDefault("Database.Enable", "false")
+	viper.SetDefault("Database.Connection",
+		"postgres://postgres:postgres@localhost/overpush?sslmode=disable")
 
 	viper.SetConfigName("overpush.toml")
 	viper.SetConfigType("toml")
@@ -225,7 +137,7 @@ func (cfg *Config) GetUserKeyFromToken(token string) (string, error) {
 	return "", errors.New("No user key for token found")
 }
 
-func (cfg *Config) GetApplication(userKey string, token string) (Application, error) {
+func (cfg *Config) GetApplication(userKey string, token string) (application.Application, error) {
 	for _, user := range cfg.Users {
 		if user.Key == userKey {
 			for _, app := range user.Applications {
@@ -236,5 +148,29 @@ func (cfg *Config) GetApplication(userKey string, token string) (Application, er
 		}
 	}
 
-	return Application{}, errors.New("No application for user/token found")
+	return application.Application{}, errors.New("No application for user/token found")
+}
+
+func (cfg *Config) GetTargetID(userKey string, token string) (string, error) {
+	for _, user := range cfg.Users {
+		if user.Key == userKey {
+			for _, app := range user.Applications {
+				if app.Token == token {
+					return app.Target, nil
+				}
+			}
+		}
+	}
+
+	return "", errors.New("No target ID for user/token found")
+}
+
+func (cfg *Config) GetTargetByID(targetID string) (target.Target, error) {
+	for _, target := range cfg.Targets {
+		if targetID == target.ID {
+			return target, nil
+		}
+	}
+
+	return target.Target{}, errors.New("No target for targetID found")
 }

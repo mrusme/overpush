@@ -5,7 +5,10 @@ import (
 	"os/signal"
 
 	"github.com/mrusme/overpush/api"
-	"github.com/mrusme/overpush/lib"
+	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/database"
+	"github.com/mrusme/overpush/repositories"
+	"github.com/mrusme/overpush/repositories/user"
 	"github.com/mrusme/overpush/worker"
 
 	"go.uber.org/zap"
@@ -18,7 +21,7 @@ func main() {
 	var logger *zap.Logger
 	var err error
 
-	config, err := lib.Cfg()
+	config, err := config.Cfg()
 	if err != nil {
 		panic(err)
 	}
@@ -38,23 +41,39 @@ func main() {
 	// TODO: Use sugarLogger
 	// sugar := logger.Sugar()
 
-	var wrk *worker.Worker
-	if config.Worker.Enable == true && config.Testing == false {
-		wrk, err = worker.New(&config, logger)
-		go wrk.Run()
+	var db *database.Database
+	if db, err = database.New(&config, logger); err != nil {
+		panic(err)
 	}
 
-	var apiServer *api.API
-	if config.Server.Enable == true {
-		apiServer, err = api.New(&config, logger)
-		if err != nil {
-			panic(err)
-		}
-		if err = apiServer.LoadMiddlewares(); err != nil {
-			panic(err)
-		}
-		go apiServer.Run()
+	var userRepo *user.Repository
+	if userRepo, err = user.New(&config, db); err != nil {
+		db.Shutdown()
+		panic(err)
 	}
+
+	var repos repositories.Repositories
+	repos.User = userRepo
+
+	var wrk *worker.Worker
+	if wrk, err = worker.New(&config, logger, repos); err != nil {
+		db.Shutdown()
+		panic(err)
+	}
+	go wrk.Run()
+
+	var apiServer *api.API
+	if apiServer, err = api.New(&config, logger, repos); err != nil {
+		wrk.Shutdown()
+		db.Shutdown()
+		panic(err)
+	}
+	if err = apiServer.LoadMiddlewares(); err != nil {
+		wrk.Shutdown()
+		db.Shutdown()
+		panic(err)
+	}
+	go apiServer.Run()
 
 	if config.Server.Enable == false &&
 		(config.Worker.Enable == false || config.Testing == true) {
@@ -70,10 +89,7 @@ func main() {
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
-	if config.Worker.Enable == true && config.Testing == false {
-		wrk.Shutdown()
-	}
-	if config.Server.Enable == true {
-		apiServer.Shutdown()
-	}
+	wrk.Shutdown()
+	apiServer.Shutdown()
+	db.Shutdown()
 }

@@ -13,27 +13,42 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/api/messages"
-	"github.com/mrusme/overpush/lib"
+	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/repositories"
 	"github.com/xmppo/go-xmpp"
 	"go.uber.org/zap"
 )
 
 type Worker struct {
-	cfg      *lib.Config
+	cfg      *config.Config
 	log      *zap.Logger
+	repos    repositories.Repositories
 	redis    *asynq.Server
 	redisMux *asynq.ServeMux
 }
 
-func New(cfg *lib.Config, log *zap.Logger) (*Worker, error) {
+func New(
+	cfg *config.Config,
+	log *zap.Logger,
+	repos repositories.Repositories,
+) (*Worker, error) {
 	wrk := new(Worker)
 
 	wrk.cfg = cfg
 	wrk.log = log
+	wrk.repos = repos
 	return wrk, nil
 }
 
 func (wrk *Worker) Run() {
+	if wrk.cfg.Worker.Enable == false || wrk.cfg.Testing == true {
+		wrk.log.Info("Worker not enabled",
+			zap.Bool("Testing", wrk.cfg.Testing),
+			zap.Bool("Worker.Enable", wrk.cfg.Worker.Enable),
+		)
+		return
+	}
+
 	if wrk.cfg.Redis.Cluster == false {
 		if wrk.cfg.Redis.Failover == false {
 			wrk.redis = asynq.NewServer(
@@ -84,6 +99,14 @@ func (wrk *Worker) Run() {
 }
 
 func (wrk *Worker) Shutdown() error {
+	if wrk.cfg.Worker.Enable == false || wrk.cfg.Testing == true {
+		wrk.log.Info("Worker not enabled",
+			zap.Bool("Testing", wrk.cfg.Testing),
+			zap.Bool("Worker.Enable", wrk.cfg.Worker.Enable),
+		)
+		return nil
+	}
+
 	wrk.redis.Shutdown()
 	return nil
 }
@@ -97,23 +120,22 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	wrk.log.Debug("Working on message", zap.ByteString("payload", t.Payload()))
 
 	var execErr error
-	for _, user := range wrk.cfg.Users {
-		if user.Key == m.User {
-			for _, app := range user.Applications {
-				if app.Token == m.Token {
-					for _, target := range wrk.cfg.Targets {
-						if app.Target == target.ID {
-							switch target.Type {
-							case "xmpp":
-								execErr = wrk.ExecuteXMPP(target.Args, m)
-							case "apprise":
-								execErr = wrk.ExecuteApprise(target.Args, m)
-							}
-						}
-					}
-				}
-			}
-		}
+
+	targetID, err := wrk.repos.Target.GetTargetID(m.User, m.Token)
+	if err != nil {
+		return err
+	}
+
+	target, err := wrk.repos.Target.GetTargetByID(targetID)
+	if err != nil {
+		return err
+	}
+
+	switch target.Type {
+	case "xmpp":
+		execErr = wrk.ExecuteXMPP(target.Args, m)
+	case "apprise":
+		execErr = wrk.ExecuteApprise(target.Args, m)
 	}
 
 	return execErr
