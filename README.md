@@ -2,6 +2,9 @@
 
 ![Overpush](.README.md/overpush.png)
 
+[![Static 
+Badge](https://img.shields.io/badge/Join_on_Matrix-green?style=for-the-badge&logo=element&logoColor=%23ffffff&label=Chat&labelColor=%23333&color=%230DBD8B&link=https%3A%2F%2Fmatrix.to%2F%23%2F%2521PHlbgZTdrhjkCJrfVY%253Amatrix.org)](https://matrix.to/#/%21PHlbgZTdrhjkCJrfVY%3Amatrix.org)
+
 **Overpush** is a self-hosted, drop-in replacement for
 [Pushover](https://pushover.net) that can use XMPP, as well as a wide variety of
 other services ([see below](#apprise)) as the delivery method while maintaining
@@ -415,8 +418,8 @@ Then, as root, reload systemd and enable the service:
 # systemctl enable --now overpush
 ```
 
-If you'd rather prefer running Overpush as a user-level service, put the service 
-file in `~/.config/systemd/user/overpush.service` and reload and enable the 
+If you'd rather prefer running Overpush as a user-level service, put the service
+file in `~/.config/systemd/user/overpush.service` and reload and enable the
 service as user:
 
 ```sh
