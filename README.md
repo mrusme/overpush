@@ -427,6 +427,22 @@ $ systemctl --user daemon-reload
 $ systemctl --user enable --now overpush
 ```
 
+### Podman
+
+```sh
+$ podman run \
+  -d \
+  --name overpush \
+  --network podman \
+  -v "$(pwd)/overpush.toml:/etc/overpush.toml:ro" \
+  -p 8080:8080 \
+  ghcr.io/mrusme/overpush:latest
+```
+
+**Info:** `apprise` inside the Docker container is available at
+`/usr/bin/apprise`; Make sure to set the `apprise = "/usr/bin/apprise"` flag
+inside `apprise` targets.
+
 ### Docker
 
 ```sh
@@ -438,11 +454,15 @@ $ docker run \
   ghcr.io/mrusme/overpush:latest
 ```
 
+**Info:** `apprise` inside the Docker container is available at
+`/usr/bin/apprise`; Make sure to set the `apprise = "/usr/bin/apprise"` flag
+inside `apprise` targets.
+
 ### Kubernetes
 
 TODO
 
-### Aamazon Web Services Lambda Function
+### Amazon Web Services Lambda Function
 
 TODO
 
@@ -456,7 +476,7 @@ TODO
 
 [That's why](https://xn--gckvb8fzb.com/goodbye-pushover-hello-overpush/).
 
-### No OTR? No OMEMO?
+### XMPP? Without OTR? Or OMEMO?
 
 Nope, none of those. The XMPP ecosystem is a bit of a can of worms in this
 regard. First, when using _modern_ languages like Go, there are very few XMPP
@@ -475,7 +495,7 @@ standards (e.g., compared to what Matrix.org or Signal use). As a result, most
 implementations would have to fall back to a significantly older and less secure
 version of OMEMO.
 
-### Workaround
+#### Workaround
 
 For notifications that require content encryption, good old GPG can be used:
 
@@ -496,3 +516,8 @@ display the message content.
 
 This is the simplest way to enable encrypted notifications without relying on
 XMPP clients to support modern encryption standards.
+
+### But Matrix is E2EE, right?
+
+[Nope](https://github.com/caronc/apprise/issues/305). Use the aforementioned
+[workaround](#workaround).
