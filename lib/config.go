@@ -119,6 +119,23 @@ type Config struct {
 		Enable bool
 		BindIP string
 		Port   string
+
+		BodyLimit          int
+		Concurrency        int
+		ProxyHeader        string
+		EnableIPValidation bool
+		TrustProxy         bool
+		TrustLoopback      bool
+		TrustProxies       []string
+		ReduceMemoryUsage  bool
+		ServerHeader       string
+
+		Limiter struct {
+			MaxReqests           int
+			PerDurationInSeconds int
+			IgnoreFailedRequests bool
+			UseRedis             bool
+		}
 	}
 
 	Worker struct {
@@ -152,6 +169,21 @@ func Cfg() (Config, error) {
 	viper.SetDefault("Server.Enable", "true")
 	viper.SetDefault("Server.BindIP", "127.0.0.1")
 	viper.SetDefault("Server.Port", "8080")
+
+	viper.SetDefault("Server.BodyLimit", "4194304")
+	viper.SetDefault("Server.Concurrency", "262144")
+	viper.SetDefault("Server.ProxyHeader", "")
+	viper.SetDefault("Server.EnableIPValidation", "false")
+	viper.SetDefault("Server.TrustProxy", "false")
+	viper.SetDefault("Server.TrustLoopback", "true")
+	viper.SetDefault("Server.TrustProxies", "")
+	viper.SetDefault("Server.ReduceMemoryUsage", "false")
+	viper.SetDefault("Server.ServerHeader", "AmazonS3")
+
+	viper.SetDefault("Server.Limiter.MaxReqests", "15")
+	viper.SetDefault("Server.Limiter.PerDurationInSeconds", "30")
+	viper.SetDefault("Server.Limiter.IgnoreFailedRequests", "true")
+	viper.SetDefault("Server.Limiter.UseRedis", "false")
 
 	viper.SetDefault("Worker.Enable", "true")
 

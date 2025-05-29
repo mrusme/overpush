@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Jeffail/gabs/v2"
@@ -15,7 +17,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"github.com/gofiber/storage/redis/v3"
 	"github.com/hibiken/asynq"
 	"github.com/markusmobius/go-dateparser"
 	"github.com/mrusme/overpush/api/messages"
@@ -41,14 +45,19 @@ func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
 	api.log = log
 
 	api.app = fiber.New(fiber.Config{
-		StrictRouting: false,
-		CaseSensitive: false,
-		Concurrency:   256 * 1024, // TODO: Make configurable
-		ProxyHeader:   "",         // TODO: Make configurable
-		// EnableTrustedProxyCheck: false,      // TODO: Make configurable
-		// TrustedProxies:          []string{}, // TODO: Make configurable
-		ReduceMemoryUsage: false,      // TODO: Make configurable
-		ServerHeader:      "AmazonS3", // Let's distract script kiddies
+		StrictRouting:      false,
+		CaseSensitive:      false,
+		BodyLimit:          api.cfg.Server.BodyLimit,
+		Concurrency:        api.cfg.Server.Concurrency,
+		ProxyHeader:        api.cfg.Server.ProxyHeader,
+		EnableIPValidation: api.cfg.Server.EnableIPValidation,
+		TrustProxy:         api.cfg.Server.TrustProxy,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Loopback: api.cfg.Server.TrustLoopback,
+			Proxies:  api.cfg.Server.TrustProxies,
+		},
+		ReduceMemoryUsage: api.cfg.Server.ReduceMemoryUsage,
+		ServerHeader:      api.cfg.Server.ServerHeader,
 		AppName:           "overpush",
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -66,6 +75,76 @@ func New(cfg *lib.Config, log *zap.Logger) (*API, error) {
 	api.attachRoutes()
 
 	return api, nil
+}
+
+func (api *API) LoadMiddlewares() error {
+	limiterCfg := limiter.Config{
+		Next: func(c fiber.Ctx) bool {
+			return c.IP() == "127.0.0.1"
+		},
+		Max: api.cfg.Server.Limiter.MaxReqests,
+		Expiration: time.Second *
+			time.Duration(api.cfg.Server.Limiter.PerDurationInSeconds),
+		SkipFailedRequests:     api.cfg.Server.Limiter.IgnoreFailedRequests,
+		SkipSuccessfulRequests: false,
+		KeyGenerator: func(c fiber.Ctx) string {
+			return fmt.Sprintf(
+				"%s-%s",
+				c.Get("x-forwarded-for"),
+				c.Params("token"),
+			)
+		},
+		LimitReached: func(c fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"errors":  []string{"Slow down, cowboy!"},
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		},
+	}
+	if api.cfg.Server.Limiter.UseRedis == true {
+		var redisStorage *redis.Storage
+		conn := strings.SplitN(api.cfg.Redis.Connection, ":", 2)
+		if len(conn) != 2 {
+			return errors.New("Could not parse Redis.Connection into HOST:PORT for Limiter")
+		}
+		host := conn[0]
+		port, err := strconv.Atoi(conn[1])
+		if err != nil {
+			return err
+		}
+
+		if api.cfg.Testing == false {
+			if api.cfg.Redis.Cluster == false {
+				if api.cfg.Redis.Failover == false {
+					redisStorage = redis.New(redis.Config{
+						Host:     host,
+						Port:     port,
+						Username: api.cfg.Redis.Username,
+						Password: api.cfg.Redis.Password,
+					})
+				} else {
+					redisStorage = redis.New(redis.Config{
+						MasterName: api.cfg.Redis.MasterName,
+						Addrs:      api.cfg.Redis.Connections,
+						Username:   api.cfg.Redis.Username,
+						Password:   api.cfg.Redis.Password,
+					})
+				}
+			} else {
+				redisStorage = redis.New(redis.Config{
+					Addrs:    api.cfg.Redis.Connections,
+					Username: api.cfg.Redis.Username,
+					Password: api.cfg.Redis.Password,
+				})
+			}
+		}
+
+		limiterCfg.Storage = redisStorage
+	}
+	api.app.Use(limiter.New(limiterCfg))
+
+	return nil
 }
 
 func (api *API) AWSLambdaHandler(

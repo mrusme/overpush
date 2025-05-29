@@ -27,6 +27,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/gofiber/schema v1.3.0 // indirect
+	github.com/gofiber/storage/redis/v3 v3.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hablullah/go-hijri v1.0.2 // indirect
 	github.com/hablullah/go-juliandays v1.0.0 // indirect

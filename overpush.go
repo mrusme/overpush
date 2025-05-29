@@ -50,6 +50,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		if err = apiServer.LoadMiddlewares(); err != nil {
+			panic(err)
+		}
 		go apiServer.Run()
 	}
 

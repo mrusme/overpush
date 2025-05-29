@@ -38,6 +38,8 @@ github.com/gofiber/fiber/v3 v3.0.0-beta.4 h1:KzDSavvhG7m81NIsmnu5l3ZDbVS4feCidl4
 github.com/gofiber/fiber/v3 v3.0.0-beta.4/go.mod h1:/WFUoHRkZEsGHyy2+fYcdqi109IVOFbVwxv1n1RU+kk=
 github.com/gofiber/schema v1.3.0 h1:K3F3wYzAY+aivfCCEHPufCthu5/13r/lzp1nuk6mr3Q=
 github.com/gofiber/schema v1.3.0/go.mod h1:YYwj01w3hVfaNjhtJzaqetymL56VW642YS3qZPhuE6c=
+github.com/gofiber/storage/redis/v3 v3.2.0 h1:1cmxmH6ZniZcWHvMpp6LzfcSK5o7CgqiouRqrVCNY9A=
+github.com/gofiber/storage/redis/v3 v3.2.0/go.mod h1:fffHK3QnjOxOUZGtq08YVNU1lqKvE+pAKJ5roSnM7FE=
 github.com/gofiber/utils/v2 v2.0.0-beta.8 h1:ZifwbHZqZO3YJsx1ZhDsWnPjaQ7C0YD20LHt+DQeXOU=
 github.com/gofiber/utils/v2 v2.0.0-beta.8/go.mod h1:1lCBo9vEF4RFEtTgWntipnaScJZQiM8rrsYycLZ4n9c=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
