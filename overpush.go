@@ -39,23 +39,38 @@ func main() {
 	// sugar := logger.Sugar()
 
 	var wrk *worker.Worker
-	if config.Testing == false {
+	if config.Worker.Enable == true && config.Testing == false {
 		wrk, err = worker.New(&config, logger)
 		go wrk.Run()
 	}
 
-	apiServer, err := api.New(&config, logger)
-	if err != nil {
-		panic(err)
+	var apiServer *api.API
+	if config.Server.Enable == true {
+		apiServer, err = api.New(&config, logger)
+		if err != nil {
+			panic(err)
+		}
+		go apiServer.Run()
 	}
-	go apiServer.Run()
 
+	if config.Server.Enable == false &&
+		(config.Worker.Enable == false || config.Testing == true) {
+		logger.Warn("WARNING: Neither API server nor worker running!")
+		logger.Info("If this is uninteded please check configuration:",
+			zap.Bool("Testing", config.Testing),
+			zap.Bool("Server.Enable", config.Server.Enable),
+			zap.Bool("Worker.Enable", config.Worker.Enable),
+		)
+		logger.Info("FYI: Setting `Testing` to `true` always disables the worker!")
+	}
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
-	if config.Testing == false {
+	if config.Worker.Enable == true && config.Testing == false {
 		wrk.Shutdown()
 	}
-	apiServer.Shutdown()
+	if config.Server.Enable == true {
+		apiServer.Shutdown()
+	}
 }

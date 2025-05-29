@@ -116,8 +116,13 @@ type Config struct {
 	}
 
 	Server struct {
+		Enable bool
 		BindIP string
 		Port   string
+	}
+
+	Worker struct {
+		Enable bool
 	}
 
 	Users []struct {
@@ -144,8 +149,11 @@ func Cfg() (Config, error) {
 	viper.SetDefault("Redis.MasterName", "")
 	viper.SetDefault("Redis.Concurrency", "1")
 
+	viper.SetDefault("Server.Enable", "true")
 	viper.SetDefault("Server.BindIP", "127.0.0.1")
 	viper.SetDefault("Server.Port", "8080")
+
+	viper.SetDefault("Worker.Enable", "true")
 
 	viper.SetConfigName("overpush.toml")
 	viper.SetConfigType("toml")
