@@ -2,20 +2,13 @@ package worker
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
-	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/repositories"
-	"github.com/xmppo/go-xmpp"
+	"github.com/mrusme/overpush/worker/targets"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +16,7 @@ type Worker struct {
 	cfg      *config.Config
 	log      *zap.Logger
 	repos    *repositories.Repositories
+	ts       *targets.Targets
 	redis    *asynq.Server
 	redisMux *asynq.ServeMux
 }
@@ -32,11 +26,18 @@ func New(
 	log *zap.Logger,
 	repos *repositories.Repositories,
 ) (*Worker, error) {
+	var err error
+
 	wrk := new(Worker)
 
 	wrk.cfg = cfg
 	wrk.log = log
 	wrk.repos = repos
+
+	if wrk.ts, err = targets.New(wrk.cfg, wrk.log); err != nil {
+		return nil, err
+	}
+
 	return wrk, nil
 }
 
@@ -47,6 +48,10 @@ func (wrk *Worker) Run() {
 			zap.Bool("Worker.Enable", wrk.cfg.Worker.Enable),
 		)
 		return
+	}
+
+	if err := wrk.ts.RunAll(); err != nil {
+		wrk.log.Fatal("Worker failed to run targets", zap.Error(err))
 	}
 
 	if wrk.cfg.Redis.Cluster == false {
@@ -131,85 +136,8 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 
-	switch target.Type {
-	case "xmpp":
-		execErr = wrk.ExecuteXMPP(target.Args, m)
-	case "apprise":
-		execErr = wrk.ExecuteApprise(target.Args, m)
-	}
+	// TODO: Pass custom args
+	wrk.ts.Execute(target.Type, m, target.Args)
 
 	return execErr
-}
-
-func (wrk *Worker) ExecuteXMPP(args map[string]string, m messages.Request) error {
-	var jabber *xmpp.Client
-
-	xmppServer := args["server"]
-	xmppTLS, err := strconv.ParseBool(args["tls"])
-	if err != nil {
-		xmppTLS = true
-	}
-	xmppUsername := args["username"]
-	xmppPassword := args["password"]
-	destinationUsername := args["destination"]
-
-	xmpp.DefaultConfig = &tls.Config{
-		ServerName:         strings.Split(xmppServer, ":")[0],
-		InsecureSkipVerify: false,
-	}
-
-	jabberOpts := xmpp.Options{
-		Host:          xmppServer,
-		User:          xmppUsername,
-		Password:      xmppPassword,
-		NoTLS:         !xmppTLS,
-		Debug:         false,
-		Session:       true,
-		Status:        "xa",
-		StatusMessage: "Pushing over ...",
-	}
-
-	jabber, err = jabberOpts.NewClient()
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	defer jabber.Close()
-
-	_, err = jabber.Send(xmpp.Chat{
-		Remote: destinationUsername,
-		Type:   "chat",
-		Text:   m.ToString(),
-	})
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
-	return nil
-}
-
-func (wrk *Worker) ExecuteApprise(args map[string]string, m messages.Request) error {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	cmd := exec.CommandContext(
-		ctx,
-		"python",
-		args["apprise"],
-		"-vv",
-		"-t", m.Title,
-		"-b", m.Message,
-		args["connection"],
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
 }
