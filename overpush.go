@@ -81,6 +81,7 @@ func main() {
 		db.Shutdown()
 		panic(err)
 	}
+	apiServer.AttachRoutes()
 	go apiServer.Run()
 
 	if config.Server.Enable == false &&

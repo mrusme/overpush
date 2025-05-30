@@ -66,7 +66,6 @@ func New(
 				})
 			},
 		})
-		api.attachRoutes()
 	}
 
 	return api, nil
@@ -162,7 +161,14 @@ func (api *API) LoadMiddlewares() error {
 	return nil
 }
 
-func (api *API) attachRoutes() {
+func (api *API) AttachRoutes() {
+	if api.cfg.Server.Enable == false {
+		api.log.Info("Server not enabled",
+			zap.Bool("Server.Enable", api.cfg.Server.Enable),
+		)
+		return
+	}
+
 	api.app.Post("/1/messages.json", handler(api))
 	api.app.Post("/:token", handler(api))
 }
