@@ -22,7 +22,7 @@ import (
 type Worker struct {
 	cfg      *config.Config
 	log      *zap.Logger
-	repos    repositories.Repositories
+	repos    *repositories.Repositories
 	redis    *asynq.Server
 	redisMux *asynq.ServeMux
 }
@@ -30,7 +30,7 @@ type Worker struct {
 func New(
 	cfg *config.Config,
 	log *zap.Logger,
-	repos repositories.Repositories,
+	repos *repositories.Repositories,
 ) (*Worker, error) {
 	wrk := new(Worker)
 

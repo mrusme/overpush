@@ -26,7 +26,7 @@ import (
 type API struct {
 	cfg   *config.Config
 	log   *zap.Logger
-	repos repositories.Repositories
+	repos *repositories.Repositories
 	app   *fiber.App
 	redis *asynq.Client
 }
@@ -34,7 +34,7 @@ type API struct {
 func New(
 	cfg *config.Config,
 	log *zap.Logger,
-	repos repositories.Repositories,
+	repos *repositories.Repositories,
 ) (*API, error) {
 	api := new(API)
 
