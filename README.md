@@ -138,6 +138,7 @@ Token = "XXX"
 Name = "CrowdSec"
 IconPath = ""
 Target = "your_target"
+TargetArgs.Destination = "you@your-xmpp-server.im"
 Format = "custom"
 CustomFormat.Message = '{{ webhook "body.alerts.0.message" }}'
 CustomFormat.Title = 'CrowdSec: {{ webhook "body.alerts.0.scenario" }}'
@@ -179,6 +180,7 @@ Token = "XXX"
 Name = "Grafana"
 IconPath = ""
 Target = "your_target"
+TargetArgs.Destination = "you@your-xmpp-server.im"
 Format = "custom"
 CustomFormat.Message = '{{ webhook "body.message" }}'
 CustomFormat.Title = '{{ webhook "body.title" }}'
@@ -220,7 +222,6 @@ Type = "xmpp"
   tls = "true"
   username = "my_bot@conversations.im"
   password = "hunter2"
-  destination = "your-user@your-xmpp.im"
 ```
 
 To use this target, specify its ID inside an `Application` configuration:
@@ -228,6 +229,7 @@ To use this target, specify its ID inside an `Application` configuration:
 ```toml
 ...
 Target = "your_target"
+TargetArgs.Destination = "you@your-xmpp-server.im"
 ...
 ```
 
@@ -344,7 +346,7 @@ Overpush supports the following platforms via
 - [E-Mail](https://github.com/caronc/apprise/wiki/Notify_email)
 - ... and many more
 
-The configuration for the XMPP target might look like this:
+The configuration for the Matrix target might look like this:
 
 ```toml
 [[Targets]]
@@ -354,7 +356,7 @@ Type = "apprise"
 
   [Targets.Args]
   apprise = "/home/you/.local/share/pyenv/bin/apprise"
-  connection = "matrixs://your_bot:hunter2@matrix.org:443/!xXxXxXxX:matrix.org"
+  connection = 'matrixs://your_bot:hunter2@matrix.org:443/{{ arg "destination" }}?format=markdown'
 ```
 
 To use this target, specify its ID inside an `Application` configuration:
@@ -362,6 +364,7 @@ To use this target, specify its ID inside an `Application` configuration:
 ```toml
 ...
 Target = "your_target"
+TargetArgs.Destination = "!xXxXxXxXXXxxxXXXxX:matrix.org"
 ...
 ```
 
