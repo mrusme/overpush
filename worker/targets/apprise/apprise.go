@@ -2,11 +2,13 @@ package apprise
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"time"
 
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/helpers"
 	"github.com/mrusme/overpush/models/message"
 	"go.uber.org/zap"
 )
@@ -43,6 +45,11 @@ func (t *Apprise) Execute(
 	args map[string]string,
 	appArgs map[string]string,
 ) error {
+	connection, ok := helpers.GetFieldValue(args["connection"], appArgs)
+	if !ok {
+		return errors.New("Could not parse connection argument")
+	}
+
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	cmd := exec.CommandContext(
 		ctx,
@@ -51,7 +58,7 @@ func (t *Apprise) Execute(
 		"-vv",
 		"-t", m.Title,
 		"-b", m.Message,
-		args["connection"],
+		connection,
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -53,7 +53,7 @@ func (t *XMPP) Execute(
 	}
 	xmppUsername := args["username"]
 	xmppPassword := args["password"]
-	destinationUsername := args["destination"]
+	destinationUsername := appArgs["destination"]
 
 	goxmpp.DefaultConfig = &tls.Config{
 		ServerName:         strings.Split(xmppServer, ":")[0],

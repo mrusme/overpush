@@ -31,6 +31,7 @@ Key = "YourPushoverUserKeyHere"
   Name = "Zsh"
   IconPath = "/some/icon.png"
   Target = "your_target_xmpp"
+  TargetArgs.Destination = "you@your-xmpp-server.im"
   Format = "pushover"
 
   # The URL for this application would be:
@@ -41,6 +42,7 @@ Key = "YourPushoverUserKeyHere"
   Name = "Grafana"
   IconPath = "/some/icon.png"
   Target = "your_target_matrix"
+  TargetArgs.Destination = "!xXxXxXxXXXxxxXXXxX:matrix.org"
   Format = "custom"
   CustomFormat.Message = '{{ webhook "body.message" }}'
   CustomFormat.Title = '{{ webhook "body.title" }}'
@@ -56,7 +58,6 @@ Type = "xmpp"
   TLS = "false"
   Username = "your_overpush_account@conversations.im"
   Password = "YourOverpushAccountPassword"
-  Destination = "you@your-xmpp-server.im"
 
 [[Targets]]
 Enable = true
@@ -65,5 +66,5 @@ Type = "apprise"
 
   [Targets.Args]
   Apprise = "/usr/bin/apprise"
-  Connection = "matrixs://my_bot:hunter2@matrix.org:443/!xXxXxXxXXXxxxXXXxX:matrix.org?format=markdown"
+  Connection = 'matrixs://my_bot:hunter2@matrix.org:443/{{ arg "destination" }}?format=markdown'
 
