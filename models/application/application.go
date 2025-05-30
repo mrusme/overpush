@@ -8,5 +8,6 @@ type Application struct {
 	Format       string
 	CustomFormat CFormat
 
-	Target string
+	Target     string
+	TargetArgs map[string]string
 }

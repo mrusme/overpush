@@ -19,14 +19,6 @@ func New(cfg *config.Config, db *database.Database) (*Repository, error) {
 	return repo, nil
 }
 
-func (repo *Repository) GetTargetID(userKey string, token string) (string, error) {
-	if repo.cfg.Database.Enable == true {
-		return repo.db.GetTargetID(userKey, token)
-	} else {
-		return repo.cfg.GetTargetID(userKey, token)
-	}
-}
-
 func (repo *Repository) GetTargetByID(targetID string) (target.Target, error) {
 	if repo.cfg.Database.Enable == true {
 		return repo.db.GetTargetByID(targetID)

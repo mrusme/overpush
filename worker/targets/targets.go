@@ -19,7 +19,11 @@ var TARGETS []string = []string{
 type Type interface {
 	Load() error
 	Run() error
-	Execute(m messages.Request, args map[string]string) error
+	Execute(
+		m messages.Request,
+		args map[string]string,
+		appArgs map[string]string,
+	) error
 	Shutdown() error
 }
 
@@ -105,19 +109,21 @@ func (ts *Targets) Execute(
 	name string,
 	m messages.Request,
 	args map[string]string,
+	appArgs map[string]string,
 ) error {
-	return ts.targets[name].Execute(m, args)
+	return ts.targets[name].Execute(m, args, appArgs)
 }
 
 func (ts *Targets) ExecuteAll(
 	m messages.Request,
 	args map[string]string,
+	appArgs map[string]string,
 ) (bool, map[string]error) {
 	var errs map[string]error = make(map[string]error)
 	var ok bool = true
 
 	for _, tname := range TARGETS {
-		if err := ts.targets[tname].Execute(m, args); err != nil {
+		if err := ts.targets[tname].Execute(m, args, appArgs); err != nil {
 			errs[tname] = err
 			ok = false
 		}
@@ -125,7 +131,6 @@ func (ts *Targets) ExecuteAll(
 
 	return ok, errs
 }
-
 
 func (ts *Targets) ShutdownAll() (bool, helpers.Errors) {
 	var errs helpers.Errors = make(helpers.Errors)
@@ -140,4 +145,3 @@ func (ts *Targets) ShutdownAll() (bool, helpers.Errors) {
 
 	return ok, errs
 }
-

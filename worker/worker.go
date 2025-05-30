@@ -133,18 +133,17 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 
 	var execErr error
 
-	targetID, err := wrk.repos.Target.GetTargetID(m.User, m.Token)
+	app, err := wrk.repos.User.GetApplication(m.User, m.Token)
 	if err != nil {
 		return err
 	}
 
-	target, err := wrk.repos.Target.GetTargetByID(targetID)
+	target, err := wrk.repos.Target.GetTargetByID(app.Target)
 	if err != nil {
 		return err
 	}
 
-	// TODO: Pass custom args
-	wrk.ts.Execute(target.Type, m, target.Args)
+	wrk.ts.Execute(target.Type, m, target.Args, app.TargetArgs)
 
 	return execErr
 }

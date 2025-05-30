@@ -39,7 +39,11 @@ func (t *XMPP) Run() error {
 	return nil
 }
 
-func (t *XMPP) Execute(m messages.Request, args map[string]string) error {
+func (t *XMPP) Execute(
+	m messages.Request,
+	args map[string]string,
+	appArgs map[string]string,
+) error {
 	var jabber *goxmpp.Client
 
 	xmppServer := args["server"]

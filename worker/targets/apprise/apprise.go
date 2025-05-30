@@ -38,7 +38,11 @@ func (t *Apprise) Run() error {
 	return nil
 }
 
-func (t *Apprise) Execute(m messages.Request, args map[string]string) error {
+func (t *Apprise) Execute(
+	m messages.Request,
+	args map[string]string,
+	appArgs map[string]string,
+) error {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	cmd := exec.CommandContext(
 		ctx,

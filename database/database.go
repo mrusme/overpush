@@ -134,25 +134,6 @@ func (db *Database) GetUserKeyFromToken(token string) (string, error) {
 	return userKey, nil
 }
 
-func (db *Database) GetTargetID(userKey string, token string) (string, error) {
-	if db.cfg.Database.Enable == false {
-		return "", nil
-	}
-
-	row := db.QueryOne(
-		"SELECT id FROM targets WHERE user_key = $1 AND token = $2",
-		userKey,
-		token,
-	)
-
-	var targetID string
-	if err := row.Scan(&targetID); err != nil {
-		return "", err
-	}
-
-	return userKey, nil
-}
-
 func (db *Database) GetTargetByID(targetID string) (target.Target, error) {
 	if db.cfg.Database.Enable == false {
 		return target.Target{}, nil
