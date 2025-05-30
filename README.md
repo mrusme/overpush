@@ -114,6 +114,7 @@ The [official Pushover API documentation](https://pushover.net/api#messages)
 shows how to submit a message to the `/1/messages.json` endpoint. Replacing
 Pushover with Overpush only requires your tooling to support changing the
 endpoint URL to your own server.
+  Enable = true
 
 You can find an
 [example script here](https://github.com/mrusme/dotfiles/blob/master/usr/local/bin/overpush)
@@ -133,6 +134,7 @@ Add the following application to your Overpush config:
 
 ```toml
 [[Users.Applications]]
+Enable = true
 Token = "XXX"
 Name = "CrowdSec"
 IconPath = ""
@@ -173,6 +175,7 @@ Add the following application to your Overpush config:
 
 ```toml
 [[Users.Applications]]
+Enable = true
 Token = "XXX"
 Name = "Grafana"
 IconPath = ""
@@ -209,6 +212,7 @@ additional software. The configuration for the XMPP target might look like this:
 
 ```toml
 [[Targets]]
+Enable = true
 ID = "your_target"
 Type = "xmpp"
 
@@ -345,6 +349,7 @@ The configuration for the XMPP target might look like this:
 
 ```toml
 [[Targets]]
+Enable = true
 ID = "your_target"
 Type = "apprise"
 

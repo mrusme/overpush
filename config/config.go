@@ -125,16 +125,16 @@ func Cfg() (Config, error) {
 	return config, nil
 }
 
-func (cfg *Config) GetUserKeyFromToken(token string) (string, error) {
+func (cfg *Config) GetUserFromToken(token string) (user.User, error) {
 	for _, user := range cfg.Users {
 		for _, app := range user.Applications {
 			if app.Token == token {
-				return user.Key, nil
+				return user, nil
 			}
 		}
 	}
 
-	return "", errors.New("No user key for token found")
+	return user.User{}, errors.New("No user key for token found")
 }
 
 func (cfg *Config) GetApplication(userKey string, token string) (application.Application, error) {

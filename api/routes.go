@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strconv"
 
 	"github.com/Jeffail/gabs/v2"
@@ -13,15 +14,16 @@ import (
 	"github.com/markusmobius/go-dateparser"
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/models/application"
+	"github.com/mrusme/overpush/models/user"
 	"github.com/mrusme/overpush/worker"
 	"go.uber.org/zap"
 )
 
 func handler(api *API) func(c fiber.Ctx) error {
 	return func(c fiber.Ctx) error {
-		var user string
+		var user user.User
 		var token string
-		var msg *messages.Request
+		var msg *messages.Request = new(messages.Request)
 		var appFormat string
 		var application application.Application
 		var err error
@@ -34,53 +36,62 @@ func handler(api *API) func(c fiber.Ctx) error {
 
 		if c.Route().Path == "/1/messages.json" {
 			appFormat = "pushover"
+			api.log.Debug("Application is pushover, processing ...")
+
+			if err := bound.Body(msg); err != nil {
+				return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+					"error":   err.Error(),
+					"status":  0,
+					"request": requestid.FromContext(c),
+				})
+			}
+
+			token = msg.Token
 		} else {
-			token = c.Params("token")
-			user, err = api.repos.User.GetUserKeyFromToken(token)
-			if err != nil {
-				return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-					"error":   err.Error(),
-					"status":  0,
-					"request": requestid.FromContext(c),
-				})
-			}
-
-			api.log.Debug("Retrieving application ...")
-			application, err = api.repos.User.GetApplication(user, token)
-			if err != nil {
-				return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-					"error":   err.Error(),
-					"status":  0,
-					"request": requestid.FromContext(c),
-				})
-			}
-
 			appFormat = application.Format
+			api.log.Debug("Application is custom, processing ...",
+				zap.String("Application.Format", application.Format))
+
+			token = c.Params("token")
+		}
+
+		t := reflect.TypeOf(msg).Elem()
+		f, _ := t.FieldByName("Token")
+		tag, _ := f.Tag.Lookup("validate")
+		if err := validate.Var(token, tag); err != nil {
+			return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+				"error":   err.Error(),
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		api.log.Debug("Retrieving user from token ...",
+			zap.String("token", token))
+		user, err = api.repos.User.GetUserFromToken(token)
+		if err != nil || user.Enable == false {
+			return c.Status(fiber.ErrNotFound.Code).JSON(fiber.Map{
+				"error":   "No active user with supplied token",
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
+		}
+
+		api.log.Debug("Retrieving application from User.Key and token ...",
+			zap.String("User.Key", user.Key),
+			zap.String("token", token))
+		application, err = api.repos.User.GetApplication(user.Key, token)
+		if err != nil || application.Enable == false {
+			return c.Status(fiber.ErrNotFound.Code).JSON(fiber.Map{
+				"error":   "No active application with supplied token",
+				"status":  0,
+				"request": requestid.FromContext(c),
+			})
 		}
 
 		if appFormat == "pushover" {
-			api.log.Debug("Application is pushover, processing ...")
-			req := new(messages.Request)
-
-			if err := bound.Body(req); err != nil {
-				return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-					"error":   err.Error(),
-					"status":  0,
-					"request": requestid.FromContext(c),
-				})
-			}
-
-			if err := validate.Struct(req); err != nil {
-				return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-					"error":   err.Error(),
-					"status":  0,
-					"request": requestid.FromContext(c),
-				})
-			}
-
-			msg = req
-		} else if appFormat == "custom" {
-			api.log.Debug("Application is custom, processing ...")
+			// Nothing yet
+		} else {
 			req := make(map[string]interface{})
 
 			if err := bound.Body(&req); err != nil {
@@ -94,9 +105,11 @@ func handler(api *API) func(c fiber.Ctx) error {
 
 			locations := make(map[string]*gabs.Container)
 			locations["body"] = gabs.Wrap(req)
-			msg = new(messages.Request)
 			var found bool
 			var tmp string
+
+			msg.Token = token
+			msg.User = user.Key
 
 			msg.Attachment, found = application.CustomFormat.
 				GetValue(locations, application.CustomFormat.Attachment)
@@ -157,9 +170,6 @@ func handler(api *API) func(c fiber.Ctx) error {
 				GetValue(locations, application.CustomFormat.URLTitle)
 
 		}
-
-		msg.User = user
-		msg.Token = token
 
 		api.log.Debug("Validating request...")
 		if err := validate.Struct(msg); err != nil {

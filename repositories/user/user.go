@@ -1,9 +1,10 @@
 package user
 
 import (
-	"github.com/mrusme/overpush/database"
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/database"
 	"github.com/mrusme/overpush/models/application"
+	"github.com/mrusme/overpush/models/user"
 )
 
 type Repository struct {
@@ -30,10 +31,10 @@ func (repo *Repository) GetApplication(
 	}
 }
 
-func (repo *Repository) GetUserKeyFromToken(token string) (string, error) {
+func (repo *Repository) GetUserFromToken(token string) (user.User, error) {
 	if repo.cfg.Database.Enable == true {
-		return repo.db.GetUserKeyFromToken(token)
+		return repo.db.GetUserFromToken(token)
 	} else {
-		return repo.cfg.GetUserKeyFromToken(token)
+		return repo.cfg.GetUserFromToken(token)
 	}
 }

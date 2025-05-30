@@ -137,10 +137,20 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		return err
 	}
+	if app.Enable == false {
+		wrk.log.Debug("Worker disregarding job, application not enabled",
+			zap.String("Application.Token", app.Token))
+		return nil
+	}
 
 	target, err := wrk.repos.Target.GetTargetByID(app.Target)
 	if err != nil {
 		return err
+	}
+	if target.Enable == false {
+		wrk.log.Debug("Worker disregarding job, target not enabled",
+			zap.String("Target.ID", target.ID))
+		return nil
 	}
 
 	wrk.ts.Execute(target.Type, m, target.Args, app.TargetArgs)

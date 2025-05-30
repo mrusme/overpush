@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/models/user"
 	"github.com/mrusme/overpush/models/application"
 	"github.com/mrusme/overpush/models/target"
 	"go.uber.org/zap"
@@ -116,9 +117,9 @@ func (db *Database) GetApplication(
 	return applications[0], nil
 }
 
-func (db *Database) GetUserKeyFromToken(token string) (string, error) {
+func (db *Database) GetUserFromToken(token string) (user.User, error) {
 	if db.cfg.Database.Enable == false {
-		return "", nil
+		return user.User{}, nil
 	}
 
 	row := db.QueryOne(
@@ -128,10 +129,26 @@ func (db *Database) GetUserKeyFromToken(token string) (string, error) {
 
 	var userKey string
 	if err := row.Scan(&userKey); err != nil {
-		return "", err
+		return user.User{}, err
 	}
 
-	return userKey, nil
+	rows, err := db.Query(
+		"SELECT * FROM users WHERE user_key = $1",
+		userKey,
+	)
+	if err != nil {
+		return user.User{}, err
+	}
+
+	users, err := pgx.CollectRows[user.User](
+		rows,
+		pgx.RowToStructByName[user.User],
+	)
+	if err != nil {
+		return user.User{}, err
+	}
+
+	return users[0], nil
 }
 
 func (db *Database) GetTargetByID(targetID string) (target.Target, error) {
