@@ -3,9 +3,9 @@ package targets
 import (
 	"errors"
 
-	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/helpers"
+	"github.com/mrusme/overpush/models/message"
 	"github.com/mrusme/overpush/worker/targets/apprise"
 	"github.com/mrusme/overpush/worker/targets/xmpp"
 	"go.uber.org/zap"
@@ -20,7 +20,7 @@ type Type interface {
 	Load() error
 	Run() error
 	Execute(
-		m messages.Request,
+		m message.Message,
 		args map[string]string,
 		appArgs map[string]string,
 	) error
@@ -107,7 +107,7 @@ func (ts *Targets) RunAll() error {
 
 func (ts *Targets) Execute(
 	name string,
-	m messages.Request,
+	m message.Message,
 	args map[string]string,
 	appArgs map[string]string,
 ) error {
@@ -115,7 +115,7 @@ func (ts *Targets) Execute(
 }
 
 func (ts *Targets) ExecuteAll(
-	m messages.Request,
+	m message.Message,
 	args map[string]string,
 	appArgs map[string]string,
 ) (bool, map[string]error) {

@@ -12,8 +12,8 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/hibiken/asynq"
 	"github.com/markusmobius/go-dateparser"
-	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/models/application"
+	"github.com/mrusme/overpush/models/message"
 	"github.com/mrusme/overpush/models/user"
 	"github.com/mrusme/overpush/worker"
 	"go.uber.org/zap"
@@ -21,9 +21,10 @@ import (
 
 func handler(api *API) func(c fiber.Ctx) error {
 	return func(c fiber.Ctx) error {
+		var viaSubmit bool = false
 		var user user.User
 		var token string
-		var msg *messages.Request = new(messages.Request)
+		var msg *message.Message = new(message.Message)
 		var appFormat string
 		var application application.Application
 		var err error
@@ -48,6 +49,13 @@ func handler(api *API) func(c fiber.Ctx) error {
 
 			token = msg.Token
 		} else {
+			if c.Route().Path == "/_internal/submit/:token" {
+				api.log.Debug("Request received via submit",
+					zap.String("IP", c.IP()),
+					zap.Strings("IPs", c.IPs()),
+				)
+				viaSubmit = true
+			}
 			appFormat = application.Format
 			api.log.Debug("Application is custom, processing ...",
 				zap.String("Application.Format", application.Format))
@@ -69,7 +77,8 @@ func handler(api *API) func(c fiber.Ctx) error {
 		api.log.Debug("Retrieving user from token ...",
 			zap.String("token", token))
 		user, err = api.repos.User.GetUserFromToken(token)
-		if err != nil || user.Enable == false {
+		if err != nil ||
+			(viaSubmit == false && user.Enable == false) {
 			return c.Status(fiber.ErrNotFound.Code).JSON(fiber.Map{
 				"error":   "No active user with supplied token",
 				"status":  0,
@@ -81,7 +90,8 @@ func handler(api *API) func(c fiber.Ctx) error {
 			zap.String("User.Key", user.Key),
 			zap.String("token", token))
 		application, err = api.repos.User.GetApplication(user.Key, token)
-		if err != nil || application.Enable == false {
+		if err != nil ||
+			(viaSubmit == false && application.Enable == false) {
 			return c.Status(fiber.ErrNotFound.Code).JSON(fiber.Map{
 				"error":   "No active application with supplied token",
 				"status":  0,
@@ -180,6 +190,12 @@ func handler(api *API) func(c fiber.Ctx) error {
 				"request": requestid.FromContext(c),
 			})
 		}
+
+		// Make sure to clear anything that might come from outside on the
+		// `internal` struct
+		msg.ClearInternal()
+		// Set whether message was submitted via /_internal/submit/:token
+		msg.SetViaSubmit(viaSubmit)
 
 		payload, err := json.Marshal(msg)
 		if err != nil {

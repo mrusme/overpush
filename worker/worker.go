@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 
 	"github.com/hibiken/asynq"
-	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/helpers"
+	"github.com/mrusme/overpush/models/message"
 	"github.com/mrusme/overpush/repositories"
 	"github.com/mrusme/overpush/worker/targets"
 	"go.uber.org/zap"
@@ -124,7 +124,7 @@ func (wrk *Worker) Shutdown() error {
 }
 
 func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
-	var m messages.Request
+	var m message.Message
 	if err := json.Unmarshal(t.Payload(), &m); err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		return err
 	}
-	if app.Enable == false {
+	if m.IsViaSubmit() == false && app.Enable == false {
 		wrk.log.Debug("Worker disregarding job, application not enabled",
 			zap.String("Application.Token", app.Token))
 		return nil
@@ -147,7 +147,7 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		return err
 	}
-	if target.Enable == false {
+	if m.IsViaSubmit() == false && target.Enable == false {
 		wrk.log.Debug("Worker disregarding job, target not enabled",
 			zap.String("Target.ID", target.ID))
 		return nil

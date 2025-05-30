@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/models/message"
 	goxmpp "github.com/xmppo/go-xmpp"
 	"go.uber.org/zap"
 )
@@ -40,7 +40,7 @@ func (t *XMPP) Run() error {
 }
 
 func (t *XMPP) Execute(
-	m messages.Request,
+	m message.Message,
 	args map[string]string,
 	appArgs map[string]string,
 ) error {

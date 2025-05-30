@@ -8,9 +8,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mrusme/overpush/config"
-	"github.com/mrusme/overpush/models/user"
 	"github.com/mrusme/overpush/models/application"
 	"github.com/mrusme/overpush/models/target"
+	"github.com/mrusme/overpush/models/user"
 	"go.uber.org/zap"
 )
 

@@ -1,8 +1,8 @@
-package messages
+package message
 
 import "fmt"
 
-type Request struct {
+type Message struct {
 	Token   string `json:"token",validate:"required,printascii"`
 	User    string `json:"user",validate:"required,printascii"`
 	Message string `json:"message",validate:"required"`
@@ -18,9 +18,21 @@ type Request struct {
 	TTL              int    `json:"ttl",validate:""`
 	URL              string `json:"url",validate:"http_url"`
 	URLTitle         string `json:"url_title",validate:""`
+
+	// Note: These are "private" fields that should never be set via the API.
+	// Hence these fields have getters/setters, to make it obvious throughout
+	// the code. Unfortunately the fields cannot be made truly private (lowercase)
+	// as this would overcomplicate JSON marshalling/unmarshalling for transfer
+	// between the API and the worker.
+	//
+	// Important: Whenever a message is being received from outside, the
+	// ClearInternal method must be called.
+	Internal struct {
+		ViaSubmit bool `json:"via_submit",validate:"-"`
+	} `json:"_internal",validate:"-"`
 }
 
-func (msg *Request) ToString() string {
+func (msg *Message) ToString() string {
 	var s string = ""
 
 	s = fmt.Sprintf(
@@ -47,3 +59,16 @@ func (msg *Request) ToString() string {
 
 	return s
 }
+
+func (msg *Message) ClearInternal() {
+	msg.Internal.ViaSubmit = false
+}
+
+func (msg *Message) SetViaSubmit(submit bool) {
+	msg.Internal.ViaSubmit = submit
+}
+
+func (msg *Message) IsViaSubmit() bool {
+	return msg.Internal.ViaSubmit
+}
+

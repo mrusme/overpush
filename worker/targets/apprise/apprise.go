@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/models/message"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +39,7 @@ func (t *Apprise) Run() error {
 }
 
 func (t *Apprise) Execute(
-	m messages.Request,
+	m message.Message,
 	args map[string]string,
 	appArgs map[string]string,
 ) error {
@@ -71,4 +71,3 @@ func (t *Apprise) Shutdown() error {
 	t.log.Info("Shutdown target: Apprise")
 	return nil
 }
-
