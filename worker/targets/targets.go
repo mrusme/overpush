@@ -5,6 +5,7 @@ import (
 
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/helpers"
 	"github.com/mrusme/overpush/worker/targets/apprise"
 	"github.com/mrusme/overpush/worker/targets/xmpp"
 	"go.uber.org/zap"
@@ -107,3 +108,36 @@ func (ts *Targets) Execute(
 ) error {
 	return ts.targets[name].Execute(m, args)
 }
+
+func (ts *Targets) ExecuteAll(
+	m messages.Request,
+	args map[string]string,
+) (bool, map[string]error) {
+	var errs map[string]error = make(map[string]error)
+	var ok bool = true
+
+	for _, tname := range TARGETS {
+		if err := ts.targets[tname].Execute(m, args); err != nil {
+			errs[tname] = err
+			ok = false
+		}
+	}
+
+	return ok, errs
+}
+
+
+func (ts *Targets) ShutdownAll() (bool, helpers.Errors) {
+	var errs helpers.Errors = make(helpers.Errors)
+	var ok bool = true
+
+	for _, tname := range TARGETS {
+		if err := ts.targets[tname].Shutdown(); err != nil {
+			errs[tname] = err
+			ok = false
+		}
+	}
+
+	return ok, errs
+}
+

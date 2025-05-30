@@ -7,6 +7,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/api/messages"
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/helpers"
 	"github.com/mrusme/overpush/repositories"
 	"github.com/mrusme/overpush/worker/targets"
 	"go.uber.org/zap"
@@ -113,6 +114,12 @@ func (wrk *Worker) Shutdown() error {
 	}
 
 	wrk.redis.Shutdown()
+
+	if ok, errs := wrk.ts.ShutdownAll(); !ok {
+		err := helpers.ErrorsToError(errs)
+		wrk.log.Error("Worker shutdown with target errors",
+			zap.Error(err))
+	}
 	return nil
 }
 
