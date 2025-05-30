@@ -1,9 +1,13 @@
 Debug = false
 
 [Server]
+Enable = true
 BindIP = "127.0.0.1" # Make it 0.0.0.0 if you want to expose it to the world
                      # without using an HTTPS terminating proxy in front
 Port = 8080
+
+[Worker]
+Enable = true
 
 [Redis]
 Connection = "redis-1337.c10.us-east-1-1.ec2.cloud.redislabs.com:1337"
@@ -16,11 +20,13 @@ Failover = false
 Concurrency = 1
 
 [[Users]]
+Enable = true
 Key = "YourPushoverUserKeyHere"
 
   # The URL for this application would be:
   # http://your.server/1/messages.json
   [[Users.Applications]]
+  Enable = true
   Token = "YourPushoverApplicationTokenHere"
   Name = "Zsh"
   IconPath = "/some/icon.png"
@@ -30,6 +36,7 @@ Key = "YourPushoverUserKeyHere"
   # The URL for this application would be:
   # http://your.server/SomeRandomUniqueTokenHere
   [[Users.Applications]]
+  Enable = true
   Token = "SomeRandomUniqueTokenHere"
   Name = "Grafana"
   IconPath = "/some/icon.png"
@@ -40,6 +47,7 @@ Key = "YourPushoverUserKeyHere"
   CustomFormat.URL = '{{ webhook "body.externalURL" }}'
 
 [[Targets]]
+Enable = true
 ID = "your_target_xmpp"
 Type = "xmpp"
 
@@ -51,6 +59,7 @@ Type = "xmpp"
   Destination = "you@your-xmpp-server.im"
 
 [[Targets]]
+Enable = true
 ID = "your_target_matrix"
 Type = "apprise"
 

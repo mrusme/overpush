@@ -1,7 +1,8 @@
 package target
 
 type Target struct {
-	ID   string
-	Type string
-	Args map[string]string
+	Enable bool
+	ID     string
+	Type   string
+	Args   map[string]string
 }

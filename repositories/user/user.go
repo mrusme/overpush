@@ -24,8 +24,7 @@ func (repo *Repository) GetApplication(
 	token string,
 ) (application.Application, error) {
 	if repo.cfg.Database.Enable == true {
-		// TODO
-		return application.Application{}, nil
+		return repo.db.GetApplication(userKey, token)
 	} else {
 		return repo.cfg.GetApplication(userKey, token)
 	}
@@ -33,8 +32,7 @@ func (repo *Repository) GetApplication(
 
 func (repo *Repository) GetUserKeyFromToken(token string) (string, error) {
 	if repo.cfg.Database.Enable == true {
-		// TODO
-		return "", nil
+		return repo.db.GetUserKeyFromToken(token)
 	} else {
 		return repo.cfg.GetUserKeyFromToken(token)
 	}

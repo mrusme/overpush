@@ -8,6 +8,7 @@ import (
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/database"
 	"github.com/mrusme/overpush/repositories"
+	"github.com/mrusme/overpush/repositories/target"
 	"github.com/mrusme/overpush/repositories/user"
 	"github.com/mrusme/overpush/worker"
 
@@ -52,8 +53,15 @@ func main() {
 		panic(err)
 	}
 
+	var targetRepo *target.Repository
+	if targetRepo, err = target.New(&config, db); err != nil {
+		db.Shutdown()
+		panic(err)
+	}
+
 	var repos repositories.Repositories
 	repos.User = userRepo
+	repos.Target = targetRepo
 
 	var wrk *worker.Worker
 	if wrk, err = worker.New(&config, logger, repos); err != nil {
