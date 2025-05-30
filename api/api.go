@@ -85,11 +85,11 @@ func (api *API) LoadMiddlewares() error {
 	api.app.Use(requestid.New())
 	api.app.Use(cors.New())
 
-	api.app.Get(fmt.Sprintf("/_internal%s", healthcheck.DefaultLivenessEndpoint),
+	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.DefaultLivenessEndpoint),
 		healthcheck.NewHealthChecker())
-	api.app.Get(fmt.Sprintf("/_internal%s", healthcheck.DefaultReadinessEndpoint),
+	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.DefaultReadinessEndpoint),
 		healthcheck.NewHealthChecker())
-	api.app.Get(fmt.Sprintf("/_internal%s", healthcheck.DefaultStartupEndpoint),
+	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.DefaultStartupEndpoint),
 		healthcheck.NewHealthChecker())
 
 	limiterCfg := limiter.Config{
@@ -171,6 +171,7 @@ func (api *API) AttachRoutes() {
 
 	api.app.Post("/1/messages.json", handler(api))
 	api.app.Post("/:token", handler(api))
+	api.app.Post("/_internal/submit/:token", handler(api))
 }
 
 func (api *API) Run() error {

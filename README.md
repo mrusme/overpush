@@ -113,8 +113,7 @@ webhook formats.
 The [official Pushover API documentation](https://pushover.net/api#messages)
 shows how to submit a message to the `/1/messages.json` endpoint. Replacing
 Pushover with Overpush only requires your tooling to support changing the
-endpoint URL to your own server.
-  Enable = true
+endpoint URL to your own server. Enable = true
 
 You can find an
 [example script here](https://github.com/mrusme/dotfiles/blob/master/usr/local/bin/overpush)
@@ -366,14 +365,23 @@ Target = "your_target"
 ...
 ```
 
-### Health Check
+### Internal Endpoints
+
+Overpush serves internal endpoints under `/_internal/`. These endpoints are not
+to be made available publicly/for clients. Make sure your reverse proxy blocks
+access to every URL starting with `/_internal/`. Hosting Overpush without a
+reverse proxy is not supported.
+
+#### Health Check
 
 Overpush provides the following URLs for health checks:
 
-- `/_internal/livez`: Checks if the server is up and running.
-- `/_internal/readyz`: Assesses if the application is ready to handle requests.
-- `/_internal/startupz`: Checks if the application has completed its startup
-  sequence and is ready to proceed with initialization and readiness checks.
+- `/_internal/health/livez`: Checks if the server is up and running.
+- `/_internal/health/readyz`: Assesses if the application is ready to handle
+  requests.
+- `/_internal/health/startupz`: Checks if the application has completed its
+  startup sequence and is ready to proceed with initialization and readiness
+  checks.
 
 These endpoints can return the following HTTP status codes:
 
