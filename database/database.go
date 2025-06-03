@@ -185,3 +185,28 @@ func (db *Database) GetTargetByID(targetID string) (target.Target, error) {
 
 	return target, nil
 }
+
+func (db *Database) IncrementStat(
+	userKey string,
+	token string,
+	stat string,
+) error {
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	_, err := db.pool.Exec(ctx,
+		"UPDATE applications SET stat_"+stat+" = stat_"+stat+" + 1 WHERE token = $1",
+		token)
+	return err
+}
+
+func (db *Database) SaveInput(
+	userKey string,
+	token string,
+	input string,
+) error {
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	_, err := db.pool.Exec(ctx,
+		"UPDATE applications SET stat_received = stat_received + 1, latest_input = $1 WHERE token = $2",
+		input,
+		token)
+	return err
+}

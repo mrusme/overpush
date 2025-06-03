@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/go-playground/validator/v10"
@@ -25,6 +27,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 		var user user.User
 		var token string
 		var msg *message.Message = new(message.Message)
+		var req map[string]interface{}
 		var appFormat string
 		var application application.Application
 		var err error
@@ -70,6 +73,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 			token = c.Params("token")
 		}
 
+		// Validate only the token to make sure it's not foo
 		t := reflect.TypeOf(msg).Elem()
 		f, _ := t.FieldByName("Token")
 		tag, _ := f.Tag.Lookup("validate")
@@ -97,7 +101,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 		api.log.Debug("Retrieving application from User.Key and token ...",
 			zap.String("User.Key", user.Key),
 			zap.String("token", token))
-		application, err = api.repos.User.GetApplication(user.Key, token)
+		application, err = api.repos.Application.GetApplication(user.Key, token)
 		if err != nil ||
 			(viaSubmit == false && application.Enable == false) {
 			return c.Status(fiber.ErrNotFound.Code).JSON(fiber.Map{
@@ -107,10 +111,13 @@ func handler(api *API) func(c fiber.Ctx) error {
 			})
 		}
 
+		var input strings.Builder
+		var pretty []byte
+
 		if appFormat == "pushover" {
-			// Nothing yet
+			pretty, err = json.MarshalIndent(msg, "", "  ")
 		} else {
-			req := make(map[string]interface{})
+			req = make(map[string]interface{})
 
 			if err := bound.Body(&req); err != nil {
 				api.log.Error("Error parsing", zap.Error(err))
@@ -121,6 +128,39 @@ func handler(api *API) func(c fiber.Ctx) error {
 				})
 			}
 
+			pretty, err = json.MarshalIndent(req, "", "  ")
+		}
+		if err != nil {
+			pretty = c.Body()
+		}
+
+		input.WriteString("--- HEADERS --------------------------------------------------------------------\n")
+		for k, v := range c.GetReqHeaders() {
+			input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+		}
+		input.WriteString("\n")
+
+		input.WriteString("--- QUERIES --------------------------------------------------------------------\n")
+		for k, v := range c.Queries() {
+			input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+		}
+		input.WriteString("\n")
+
+		input.WriteString("--- BODY -----------------------------------------------------------------------\n")
+		input.WriteString(string(pretty))
+
+		if err = api.repos.Application.SaveInput(
+			"No need when DB",
+			token,
+			input.String(),
+		); err != nil {
+			api.log.Error("Application input not saved",
+				zap.Error(err))
+		}
+
+		if appFormat == "pushover" {
+			// Nothing yet
+		} else {
 			locations := make(map[string]*gabs.Container)
 			locations["body"] = gabs.Wrap(req)
 			var found bool
@@ -241,6 +281,16 @@ func handler(api *API) func(c fiber.Ctx) error {
 			wrk.Run()
 
 			wrk.HandleMessage(context.Background(), asynq.NewTask("message", payload))
+		}
+
+		if err = api.repos.Application.IncrementStat(
+			"No need when DB",
+			token,
+			"processed",
+		); err != nil {
+			api.log.Error("Application stat not increased",
+				zap.String("stat", "processed"),
+				zap.Error(err))
 		}
 
 		return c.JSON(fiber.Map{

@@ -155,7 +155,7 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 
 	wrk.log.Debug("Working on message", zap.ByteString("payload", t.Payload()))
 
-	app, err := wrk.repos.User.GetApplication(m.User, m.Token)
+	app, err := wrk.repos.Application.GetApplication(m.User, m.Token)
 	if err != nil {
 		wrk.log.Debug("Worker encountered error for User.GetApplication",
 			zap.Error(err))
@@ -197,6 +197,16 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 		wrk.log.Debug("Worker target execution failed",
 			zap.Error(err))
 		return err
+	}
+
+	if err = wrk.repos.Application.IncrementStat(
+		"No need when DB",
+		app.Token,
+		"sent",
+	); err != nil {
+		wrk.log.Error("Application stat not increased",
+			zap.String("stat", "sent"),
+			zap.Error(err))
 	}
 
 	return nil
