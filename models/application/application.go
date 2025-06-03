@@ -9,5 +9,5 @@ type Application struct {
 	CustomFormat CFormat
 
 	Target     string
-	TargetArgs map[string]string
+	TargetArgs map[string]interface{}
 }

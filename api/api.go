@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/config"
+	"github.com/mrusme/overpush/database"
 	"github.com/mrusme/overpush/fiberzap"
 	"github.com/mrusme/overpush/repositories"
 	"go.uber.org/zap"
@@ -34,13 +35,11 @@ type API struct {
 func New(
 	cfg *config.Config,
 	log *zap.Logger,
-	repos *repositories.Repositories,
 ) (*API, error) {
 	api := new(API)
 
 	api.cfg = cfg
 	api.log = log
-	api.repos = repos
 
 	if api.cfg.Server.Enable == true {
 		api.app = fiber.New(fiber.Config{
@@ -175,6 +174,8 @@ func (api *API) AttachRoutes() {
 }
 
 func (api *API) Run() error {
+	var err error
+
 	if api.cfg.Server.Enable == false {
 		api.log.Info("Server not enabled",
 			zap.Bool("Server.Enable", api.cfg.Server.Enable),
@@ -208,6 +209,18 @@ func (api *API) Run() error {
 		defer api.redis.Close()
 	}
 
+	var db *database.Database
+	if db, err = database.New(api.cfg, api.log); err != nil {
+		return(err)
+	}
+
+	var repos *repositories.Repositories
+	if repos, err = repositories.New(api.cfg, db); err != nil {
+		db.Shutdown()
+		return(err)
+	}
+	api.repos = repos
+
 	functionName := os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
 
 	if functionName == "" {
@@ -237,5 +250,6 @@ func (api *API) Shutdown() error {
 		return nil
 	}
 	api.app.ShutdownWithTimeout(time.Second * 5)
+	api.repos.Shutdown()
 	return nil
 }

@@ -57,6 +57,7 @@ require (
 	github.com/tetratelabs/wazero v1.2.1 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/vgarvardt/pgx-google-uuid/v5 v5.6.0 // indirect
 	github.com/wasilibs/go-re2 v1.3.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.10.0 // indirect

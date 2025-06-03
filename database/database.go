@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	pgxuuid "github.com/jackc/pgx-gofrs-uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/models/application"
 	"github.com/mrusme/overpush/models/target"
 	"github.com/mrusme/overpush/models/user"
+	pgxUUID "github.com/vgarvardt/pgx-google-uuid/v5"
 	"go.uber.org/zap"
 )
 
@@ -35,7 +35,8 @@ func New(cfg *config.Config, log *zap.Logger) (*Database, error) {
 		}
 
 		db.poolcfg.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
-			pgxuuid.Register(c.TypeMap())
+			db.log.Debug("Registering UUID Types")
+			pgxUUID.Register(c.TypeMap())
 			return nil
 		}
 
@@ -72,23 +73,6 @@ func (db *Database) Shutdown() error {
 	return nil
 }
 
-func (db *Database) Query(q string, args ...any) (pgx.Rows, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	rows, err := db.pool.Query(ctx, q, args)
-	if err != nil {
-		return nil, err
-	}
-
-	return rows, nil
-}
-
-func (db *Database) QueryOne(q string, args ...any) pgx.Row {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	row := db.pool.QueryRow(ctx, q, args)
-
-	return row
-}
-
 func (db *Database) GetApplication(
 	userKey string,
 	token string,
@@ -97,9 +81,9 @@ func (db *Database) GetApplication(
 		return application.Application{}, nil
 	}
 
-	rows, err := db.Query(
-		"SELECT * FROM applications WHERE user_key = $1 AND token = $2",
-		userKey,
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	rows, err := db.pool.Query(ctx,
+		"SELECT enable,token,name,icon_path,format,custom_format,target_id as target,target_args FROM applications WHERE token = $1",
 		token,
 	)
 	if err != nil {
@@ -117,38 +101,62 @@ func (db *Database) GetApplication(
 	return applications[0], nil
 }
 
+func (db *Database) GetApplicationsForUser(
+	userID string,
+) ([]application.Application, error) {
+	if db.cfg.Database.Enable == false {
+		return []application.Application{}, nil
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	rows, err := db.pool.Query(ctx,
+		"SELECT enable,token,name,icon_path,format,custom_format,target_id as target,target_args FROM applications WHERE user_id = $1",
+		userID,
+	)
+	if err != nil {
+		return []application.Application{}, err
+	}
+
+	applications, err := pgx.CollectRows[application.Application](
+		rows,
+		pgx.RowToStructByName[application.Application],
+	)
+	if err != nil {
+		return []application.Application{}, err
+	}
+
+	return applications, nil
+}
+
 func (db *Database) GetUserFromToken(token string) (user.User, error) {
 	if db.cfg.Database.Enable == false {
 		return user.User{}, nil
 	}
 
-	row := db.QueryOne(
-		"SELECT user_key FROM applications WHERE token = $1",
+	var userID string
+	var enable bool
+	var key string
+
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := db.pool.QueryRow(ctx,
+		"SELECT users.id,users.key,users.enable FROM applications JOIN users ON applications.user_id = users.id WHERE applications.token = $1",
 		token,
-	)
-
-	var userKey string
-	if err := row.Scan(&userKey); err != nil {
+	).Scan(&userID, &key, &enable); err != nil {
 		return user.User{}, err
 	}
 
-	rows, err := db.Query(
-		"SELECT * FROM users WHERE user_key = $1",
-		userKey,
-	)
+	applications, err := db.GetApplicationsForUser(userID)
 	if err != nil {
 		return user.User{}, err
 	}
 
-	users, err := pgx.CollectRows[user.User](
-		rows,
-		pgx.RowToStructByName[user.User],
-	)
-	if err != nil {
-		return user.User{}, err
+	user := user.User{
+		Enable:       enable,
+		Key:          key,
+		Applications: applications,
 	}
 
-	return users[0], nil
+	return user, nil
 }
 
 func (db *Database) GetTargetByID(targetID string) (target.Target, error) {
@@ -156,21 +164,24 @@ func (db *Database) GetTargetByID(targetID string) (target.Target, error) {
 		return target.Target{}, nil
 	}
 
-	rows, err := db.Query(
-		"SELECT * FROM targets WHERE id = $1",
+	var enable bool
+	var targetType string
+	var targetArgs map[string]interface{}
+
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := db.pool.QueryRow(ctx,
+		"SELECT id,enable,type,args FROM targets WHERE id = $1",
 		targetID,
-	)
-	if err != nil {
+	).Scan(&targetID, &enable, &targetType, &targetArgs); err != nil {
 		return target.Target{}, err
 	}
 
-	targets, err := pgx.CollectRows[target.Target](
-		rows,
-		pgx.RowToStructByName[target.Target],
-	)
-	if err != nil {
-		return target.Target{}, err
+	target := target.Target{
+		Enable: enable,
+		ID:     targetID,
+		Type:   targetType,
+		Args:   targetArgs,
 	}
 
-	return targets[0], nil
+	return target, nil
 }

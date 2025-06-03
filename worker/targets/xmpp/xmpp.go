@@ -2,7 +2,6 @@ package xmpp
 
 import (
 	"crypto/tls"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -41,19 +40,19 @@ func (t *XMPP) Run() error {
 
 func (t *XMPP) Execute(
 	m message.Message,
-	args map[string]string,
-	appArgs map[string]string,
+	args map[string]interface{},
+	appArgs map[string]interface{},
 ) error {
 	var jabber *goxmpp.Client
 
-	xmppServer := args["server"]
-	xmppTLS, err := strconv.ParseBool(args["tls"])
+	xmppServer := args["server"].(string)
+	xmppTLS, err := strconv.ParseBool(args["tls"].(string))
 	if err != nil {
 		xmppTLS = true
 	}
-	xmppUsername := args["username"]
-	xmppPassword := args["password"]
-	destinationUsername := appArgs["destination"]
+	xmppUsername := args["username"].(string)
+	xmppPassword := args["password"].(string)
+	destinationUsername := appArgs["destination"].(string)
 
 	goxmpp.DefaultConfig = &tls.Config{
 		ServerName:         strings.Split(xmppServer, ":")[0],
@@ -73,7 +72,8 @@ func (t *XMPP) Execute(
 
 	jabber, err = jabberOpts.NewClient()
 	if err != nil {
-		fmt.Println(err)
+		t.log.Error("XMPP failed to connect",
+			zap.Error(err))
 		return err
 	}
 	defer jabber.Close()
@@ -84,7 +84,8 @@ func (t *XMPP) Execute(
 		Text:   m.ToString(),
 	})
 	if err != nil {
-		fmt.Println(err)
+		t.log.Error("XMPP failed to send",
+			zap.Error(err))
 		return err
 	}
 
@@ -95,4 +96,3 @@ func (t *XMPP) Shutdown() error {
 	t.log.Info("Shutdown target: XMPP")
 	return nil
 }
-

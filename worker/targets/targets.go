@@ -21,8 +21,8 @@ type Type interface {
 	Run() error
 	Execute(
 		m message.Message,
-		args map[string]string,
-		appArgs map[string]string,
+		args map[string]interface{},
+		appArgs map[string]interface{},
 	) error
 	Shutdown() error
 }
@@ -108,16 +108,16 @@ func (ts *Targets) RunAll() error {
 func (ts *Targets) Execute(
 	name string,
 	m message.Message,
-	args map[string]string,
-	appArgs map[string]string,
+	args map[string]interface{},
+	appArgs map[string]interface{},
 ) error {
 	return ts.targets[name].Execute(m, args, appArgs)
 }
 
 func (ts *Targets) ExecuteAll(
 	m message.Message,
-	args map[string]string,
-	appArgs map[string]string,
+	args map[string]interface{},
+	appArgs map[string]interface{},
 ) (bool, map[string]error) {
 	var errs map[string]error = make(map[string]error)
 	var ok bool = true

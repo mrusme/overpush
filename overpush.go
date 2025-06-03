@@ -6,8 +6,6 @@ import (
 
 	"github.com/mrusme/overpush/api"
 	"github.com/mrusme/overpush/config"
-	"github.com/mrusme/overpush/database"
-	"github.com/mrusme/overpush/repositories"
 	"github.com/mrusme/overpush/worker"
 
 	"go.uber.org/zap"
@@ -40,33 +38,19 @@ func main() {
 	// TODO: Use sugarLogger
 	// sugar := logger.Sugar()
 
-	var db *database.Database
-	if db, err = database.New(&config, logger); err != nil {
-		panic(err)
-	}
-
-	var repos *repositories.Repositories
-	if repos, err = repositories.New(&config, db); err != nil {
-		db.Shutdown()
-		panic(err)
-	}
-
 	var wrk *worker.Worker
-	if wrk, err = worker.New(&config, logger, repos); err != nil {
-		db.Shutdown()
+	if wrk, err = worker.New(&config, logger); err != nil {
 		panic(err)
 	}
 	go wrk.Run()
 
 	var apiServer *api.API
-	if apiServer, err = api.New(&config, logger, repos); err != nil {
+	if apiServer, err = api.New(&config, logger); err != nil {
 		wrk.Shutdown()
-		db.Shutdown()
 		panic(err)
 	}
 	if err = apiServer.LoadMiddlewares(); err != nil {
 		wrk.Shutdown()
-		db.Shutdown()
 		panic(err)
 	}
 	apiServer.AttachRoutes()
@@ -88,5 +72,4 @@ func main() {
 
 	wrk.Shutdown()
 	apiServer.Shutdown()
-	db.Shutdown()
 }

@@ -22,10 +22,10 @@ func ErrorsToError(errs Errors) error {
 	return errors.New(errstr)
 }
 
-func GetFieldValue(tmplstr string, args map[string]string) (string, bool) {
+func GetFieldValue(tmplstr string, args map[string]interface{}) (string, bool) {
 	funcs := template.FuncMap{
 		"arg": func(arg string) any {
-			val, ok := args[arg]
+			val, ok := args[arg].(string)
 			if !ok {
 				return ""
 			}

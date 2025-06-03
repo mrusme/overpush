@@ -8,6 +8,8 @@ import (
 )
 
 type Repositories struct {
+	cfg    *config.Config
+	db     *database.Database
 	User   *user.Repository
 	Target *target.Repository
 }
@@ -18,6 +20,9 @@ func New(
 ) (*Repositories, error) {
 	var repos *Repositories = new(Repositories)
 	var err error
+
+	repos.cfg = cfg
+	repos.db = db
 
 	var userRepo *user.Repository
 	if userRepo, err = user.New(cfg, db); err != nil {
@@ -35,3 +40,6 @@ func New(
 	return repos, nil
 }
 
+func (repos *Repositories) Shutdown() error {
+	return repos.db.Shutdown()
+}

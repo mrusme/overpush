@@ -35,7 +35,16 @@ func handler(api *API) func(c fiber.Ctx) error {
 
 		api.log.Debug("Received request, processing ...")
 
-		if c.Route().Path == "/1/messages.json" {
+		if c.Route().Path == "/1/messages.json" ||
+			c.Route().Path == "/_internal/submit/:token" {
+			if c.Route().Path == "/_internal/submit/:token" {
+				api.log.Debug("Request received via submit",
+					zap.String("IP", c.IP()),
+					zap.Strings("IPs", c.IPs()),
+				)
+				viaSubmit = true
+			}
+
 			appFormat = "pushover"
 			api.log.Debug("Application is pushover, processing ...")
 
@@ -47,15 +56,13 @@ func handler(api *API) func(c fiber.Ctx) error {
 				})
 			}
 
-			token = msg.Token
-		} else {
-			if c.Route().Path == "/_internal/submit/:token" {
-				api.log.Debug("Request received via submit",
-					zap.String("IP", c.IP()),
-					zap.Strings("IPs", c.IPs()),
-				)
-				viaSubmit = true
+			if viaSubmit == true {
+				token = c.Params("token")
+				msg.Token = token
+			} else {
+				token = msg.Token
 			}
+		} else {
 			appFormat = application.Format
 			api.log.Debug("Application is custom, processing ...",
 				zap.String("Application.Format", application.Format))
@@ -79,6 +86,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 		user, err = api.repos.User.GetUserFromToken(token)
 		if err != nil ||
 			(viaSubmit == false && user.Enable == false) {
+			api.log.Debug("Could not retrieve user", zap.Error(err))
 			return c.Status(fiber.ErrNotFound.Code).JSON(fiber.Map{
 				"error":   "No active user with supplied token",
 				"status":  0,
@@ -220,7 +228,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 			api.log.Debug("Calling worker directly with request",
 				zap.ByteString("payload", payload))
 
-			wrk, err := worker.New(api.cfg, api.log, api.repos)
+			wrk, err := worker.New(api.cfg, api.log)
 			if err != nil {
 				api.log.Error("Error calling worker directly", zap.Error(err))
 				return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
@@ -229,6 +237,8 @@ func handler(api *API) func(c fiber.Ctx) error {
 					"request": requestid.FromContext(c),
 				})
 			}
+
+			wrk.Run()
 
 			wrk.HandleMessage(context.Background(), asynq.NewTask("message", payload))
 		}
