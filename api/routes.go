@@ -134,28 +134,30 @@ func handler(api *API) func(c fiber.Ctx) error {
 			pretty = c.Body()
 		}
 
-		input.WriteString("--- HEADERS --------------------------------------------------------------------\n")
-		for k, v := range c.GetReqHeaders() {
-			input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
-		}
-		input.WriteString("\n")
+		if viaSubmit == false {
+			input.WriteString("--- HEADERS --------------------------------------------------------------------\n")
+			for k, v := range c.GetReqHeaders() {
+				input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+			}
+			input.WriteString("\n")
 
-		input.WriteString("--- QUERIES --------------------------------------------------------------------\n")
-		for k, v := range c.Queries() {
-			input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
-		}
-		input.WriteString("\n")
+			input.WriteString("--- QUERIES --------------------------------------------------------------------\n")
+			for k, v := range c.Queries() {
+				input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+			}
+			input.WriteString("\n")
 
-		input.WriteString("--- BODY -----------------------------------------------------------------------\n")
-		input.WriteString(string(pretty))
+			input.WriteString("--- BODY -----------------------------------------------------------------------\n")
+			input.WriteString(string(pretty))
 
-		if err = api.repos.Application.SaveInput(
-			"No need when DB",
-			token,
-			input.String(),
-		); err != nil {
-			api.log.Error("Application input not saved",
-				zap.Error(err))
+			if err = api.repos.Application.SaveInput(
+				"No need when DB",
+				token,
+				input.String(),
+			); err != nil {
+				api.log.Error("Application input not saved",
+					zap.Error(err))
+			}
 		}
 
 		if appFormat == "pushover" {
@@ -283,14 +285,16 @@ func handler(api *API) func(c fiber.Ctx) error {
 			wrk.HandleMessage(context.Background(), asynq.NewTask("message", payload))
 		}
 
-		if err = api.repos.Application.IncrementStat(
-			"No need when DB",
-			token,
-			"processed",
-		); err != nil {
-			api.log.Error("Application stat not increased",
-				zap.String("stat", "processed"),
-				zap.Error(err))
+		if viaSubmit == false {
+			if err = api.repos.Application.IncrementStat(
+				"No need when DB",
+				token,
+				"processed",
+			); err != nil {
+				api.log.Error("Application stat not increased",
+					zap.String("stat", "processed"),
+					zap.Error(err))
+			}
 		}
 
 		return c.JSON(fiber.Map{

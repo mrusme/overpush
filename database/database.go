@@ -22,6 +22,8 @@ type Database struct {
 	pool    *pgxpool.Pool
 }
 
+var APPLICATION_FIELDS = "enable,token,name,icon_path,format,custom_format,encryption_type,encryption_recipients,encrypt_title,encrypt_message,encrypt_attachment,target_id as target,target_args"
+
 func New(cfg *config.Config, log *zap.Logger) (*Database, error) {
 	var err error
 
@@ -83,7 +85,7 @@ func (db *Database) GetApplication(
 
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	rows, err := db.pool.Query(ctx,
-		"SELECT enable,token,name,icon_path,format,custom_format,target_id as target,target_args FROM applications WHERE token = $1",
+		"SELECT "+APPLICATION_FIELDS+" WHERE token = $1",
 		token,
 	)
 	if err != nil {
@@ -110,7 +112,7 @@ func (db *Database) GetApplicationsForUser(
 
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	rows, err := db.pool.Query(ctx,
-		"SELECT enable,token,name,icon_path,format,custom_format,target_id as target,target_args FROM applications WHERE user_id = $1",
+		"SELECT "+APPLICATION_FIELDS+" FROM applications WHERE user_id = $1",
 		userID,
 	)
 	if err != nil {

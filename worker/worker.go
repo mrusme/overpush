@@ -1,9 +1,12 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 
+	"filippo.io/age"
 	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/database"
@@ -187,6 +190,21 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 		app.TargetArgs = realTarget.(map[string]interface{})
 	}
 
+	wrk.log.Debug("Worker checking encryption requirements",
+		zap.String("EncryptionType", app.EncryptionType))
+	if app.EncryptionType == "age" {
+		if err = wrk.EncryptWithAge(
+			&m,
+			app.EncryptionRecipients,
+			app.EncryptTitle,
+			app.EncryptMessage,
+			app.EncryptAttachment); err != nil {
+			wrk.log.Error("Worker encryption failed",
+				zap.Error(err))
+			return err
+		}
+	}
+
 	wrk.log.Debug("Worker executing target",
 		zap.String("Target.Type", target.Type),
 		zap.Any("Target.Args", target.Args),
@@ -199,14 +217,95 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 
-	if err = wrk.repos.Application.IncrementStat(
-		"No need when DB",
-		app.Token,
-		"sent",
-	); err != nil {
-		wrk.log.Error("Application stat not increased",
-			zap.String("stat", "sent"),
-			zap.Error(err))
+	if m.IsViaSubmit() == false {
+		if err = wrk.repos.Application.IncrementStat(
+			"No need when DB",
+			app.Token,
+			"sent",
+		); err != nil {
+			wrk.log.Error("Application stat not increased",
+				zap.String("stat", "sent"),
+				zap.Error(err))
+		}
+	}
+
+	return nil
+}
+
+func (wrk *Worker) EncryptWithAge(
+	m *message.Message,
+	recipients []string,
+	title bool,
+	message bool,
+	attachment bool,
+) error {
+	if title == false && message == false == attachment == false {
+		return nil
+	}
+
+	var rcpts []age.Recipient
+	for _, recipient := range recipients {
+		rcpt, err := age.ParseX25519Recipient(recipient)
+		if err != nil {
+			return err
+		}
+		rcpts = append(rcpts, rcpt)
+	}
+
+	if title == true {
+		out := &bytes.Buffer{}
+		w, err := age.Encrypt(out, rcpts...)
+		if err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, m.Title); err != nil {
+			return err
+		}
+		if err := w.Close(); err != nil {
+			return err
+		}
+		m.Title = out.String()
+	}
+
+	if message == true {
+		out := &bytes.Buffer{}
+		w, err := age.Encrypt(out, rcpts...)
+		if err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, m.Message); err != nil {
+			return err
+		}
+		if err := w.Close(); err != nil {
+			return err
+		}
+		m.Message = out.String()
+	}
+
+	if attachment == true {
+		out := &bytes.Buffer{}
+		w, err := age.Encrypt(out, rcpts...)
+		if err != nil {
+			return err
+		}
+		if len(m.Attachment) > 0 {
+			if _, err := io.WriteString(w, m.Attachment); err != nil {
+				return err
+			}
+		} else if len(m.AttachmentBase64) > 0 && len(m.AttachmentType) > 0 {
+			if _, err := io.WriteString(w, m.AttachmentBase64); err != nil {
+				return err
+			}
+		}
+
+		if err := w.Close(); err != nil {
+			return err
+		}
+		if len(m.Attachment) > 0 {
+			m.Attachment = out.String()
+		} else if len(m.AttachmentBase64) > 0 && len(m.AttachmentType) > 0 {
+			m.AttachmentBase64 = out.String()
+		}
 	}
 
 	return nil
