@@ -22,7 +22,10 @@ type Database struct {
 	pool    *pgxpool.Pool
 }
 
-var APPLICATION_FIELDS = "enable,token,name,icon_path,format,custom_format,encryption_type,encryption_recipients,encrypt_title,encrypt_message,encrypt_attachment,target_id as target,target_args"
+var (
+	APPLICATION_FIELDS = "enable,token,name,icon_path,format,custom_format,encryption_type,encryption_recipients,encrypt_title,encrypt_message,encrypt_attachment,target_id as target,target_args"
+	TARGET_FIELDS      = "id,enable,type,args"
+)
 
 func New(cfg *config.Config, log *zap.Logger) (*Database, error) {
 	var err error
@@ -85,7 +88,7 @@ func (db *Database) GetApplication(
 
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	rows, err := db.pool.Query(ctx,
-		"SELECT "+APPLICATION_FIELDS+" WHERE token = $1",
+		"SELECT "+APPLICATION_FIELDS+" FROM applications WHERE token = $1",
 		token,
 	)
 	if err != nil {
@@ -161,6 +164,30 @@ func (db *Database) GetUserFromToken(token string) (user.User, error) {
 	return user, nil
 }
 
+func (db *Database) GetTargets() ([]target.Target, error) {
+	if db.cfg.Database.Enable == false {
+		return []target.Target{}, nil
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	rows, err := db.pool.Query(ctx,
+		"SELECT "+TARGET_FIELDS+" FROM targets",
+	)
+	if err != nil {
+		return []target.Target{}, err
+	}
+
+	targets, err := pgx.CollectRows[target.Target](
+		rows,
+		pgx.RowToStructByName[target.Target],
+	)
+	if err != nil {
+		return []target.Target{}, err
+	}
+
+	return targets, nil
+}
+
 func (db *Database) GetTargetByID(targetID string) (target.Target, error) {
 	if db.cfg.Database.Enable == false {
 		return target.Target{}, nil
@@ -172,7 +199,7 @@ func (db *Database) GetTargetByID(targetID string) (target.Target, error) {
 
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	if err := db.pool.QueryRow(ctx,
-		"SELECT id,enable,type,args FROM targets WHERE id = $1",
+		"SELECT "+TARGET_FIELDS+" FROM targets WHERE id = $1",
 		targetID,
 	).Scan(&targetID, &enable, &targetType, &targetArgs); err != nil {
 		return target.Target{}, err
@@ -207,7 +234,7 @@ func (db *Database) SaveInput(
 ) error {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	_, err := db.pool.Exec(ctx,
-		"UPDATE applications SET stat_received = stat_received + 1, latest_input = $1 WHERE token = $2",
+		"UPDATE applications SET stat_received = stat_received + 1, latest_input = CASE WHEN store_latest_input THEN $1 ELSE '' END WHERE token = $2",
 		input,
 		token)
 	return err
