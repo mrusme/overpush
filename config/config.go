@@ -151,6 +151,10 @@ func (cfg *Config) GetApplication(userKey string, token string) (application.App
 	return application.Application{}, errors.New("No application for user/token found")
 }
 
+func (cfg *Config) GetTargets() ([]target.Target, error) {
+	return cfg.Targets, nil
+}
+
 func (cfg *Config) GetTargetByID(targetID string) (target.Target, error) {
 	for _, target := range cfg.Targets {
 		if targetID == target.ID {

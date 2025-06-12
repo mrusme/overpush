@@ -10,22 +10,26 @@ import (
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/helpers"
 	"github.com/mrusme/overpush/models/message"
+	"github.com/mrusme/overpush/models/target"
 	"go.uber.org/zap"
 )
 
 type Apprise struct {
-	cfg *config.Config
-	log *zap.Logger
+	cfg       *config.Config
+	log       *zap.Logger
+	targetCfg target.Target
 }
 
 func New(
 	cfg *config.Config,
 	log *zap.Logger,
+	targetCfg target.Target,
 ) (*Apprise, error) {
 	t := new(Apprise)
 
 	t.cfg = cfg
 	t.log = log
+	t.targetCfg = targetCfg
 
 	return t, nil
 }
@@ -42,10 +46,12 @@ func (t *Apprise) Run() error {
 
 func (t *Apprise) Execute(
 	m message.Message,
-	args map[string]interface{},
 	appArgs map[string]interface{},
 ) error {
-	connection, ok := helpers.GetFieldValue(args["connection"].(string), appArgs)
+	connection, ok := helpers.GetFieldValue(
+		t.targetCfg.Args["connection"].(string),
+		appArgs,
+	)
 	if !ok {
 		return errors.New("Could not parse connection argument")
 	}
@@ -54,7 +60,7 @@ func (t *Apprise) Execute(
 	cmd := exec.CommandContext(
 		ctx,
 		"python",
-		args["apprise"].(string),
+		t.targetCfg.Args["apprise"].(string),
 		"-vv",
 		"-t", m.Title,
 		"-b", m.Message,

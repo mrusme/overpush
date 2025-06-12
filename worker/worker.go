@@ -30,16 +30,10 @@ func New(
 	cfg *config.Config,
 	log *zap.Logger,
 ) (*Worker, error) {
-	var err error
-
 	wrk := new(Worker)
 
 	wrk.cfg = cfg
 	wrk.log = log
-
-	if wrk.ts, err = targets.New(wrk.cfg, wrk.log); err != nil {
-		return nil, err
-	}
 
 	return wrk, nil
 }
@@ -75,8 +69,27 @@ func (wrk *Worker) Run() error {
 		return nil
 	}
 
+	targetCfgs, err := wrk.repos.Target.GetTargets()
+	if err != nil {
+		db.Shutdown()
+		return err
+	}
+
+	if wrk.ts, err = targets.New(wrk.cfg, wrk.log, targetCfgs); err != nil {
+		db.Shutdown()
+		return err
+	}
+
+	if err := wrk.ts.LoadAll(); err != nil {
+		wrk.log.Fatal("Worker failed to load targets", zap.Error(err))
+		db.Shutdown()
+		return err
+	}
+
 	if err := wrk.ts.RunAll(); err != nil {
 		wrk.log.Fatal("Worker failed to run targets", zap.Error(err))
+		db.Shutdown()
+		return err
 	}
 
 	if wrk.cfg.Redis.Cluster == false {
@@ -211,7 +224,11 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 		zap.Any("Application.TargetArgs", app.TargetArgs),
 	)
 
-	if err := wrk.ts.Execute(target.Type, m, target.Args, app.TargetArgs); err != nil {
+	if err := wrk.ts.Execute(
+		target.ID,
+		m,
+		app.TargetArgs,
+	); err != nil {
 		wrk.log.Debug("Worker target execution failed",
 			zap.Error(err))
 		return err

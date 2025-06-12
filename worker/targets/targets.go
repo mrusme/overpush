@@ -6,48 +6,46 @@ import (
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/helpers"
 	"github.com/mrusme/overpush/models/message"
+	"github.com/mrusme/overpush/models/target"
 	"github.com/mrusme/overpush/worker/targets/apprise"
 	"github.com/mrusme/overpush/worker/targets/xmpp"
 	"go.uber.org/zap"
 )
 
-var TARGETS []string = []string{
-	"apprise",
-	"xmpp",
-}
-
-type Type interface {
+type ITarget interface {
 	Load() error
 	Run() error
 	Execute(
 		m message.Message,
-		args map[string]interface{},
 		appArgs map[string]interface{},
 	) error
 	Shutdown() error
 }
 
-type Types map[string]Type
+type (
+	ITargets map[string]ITarget
+)
 
 type Targets struct {
-	cfg     *config.Config
-	log     *zap.Logger
-	targets Types
+	cfg        *config.Config
+	log        *zap.Logger
+	targetCfgs []target.Target
+	targets    ITargets
 }
 
 func NewTarget(
 	cfg *config.Config,
 	log *zap.Logger,
-	name string,
-) (Type, error) {
-	var t Type
+	targetCfg target.Target,
+) (ITarget, error) {
+	var t ITarget
 	var err error
 
-	switch name {
+	switch targetCfg.Type {
 	case "xmpp":
-		t, err = xmpp.New(cfg, log)
+		t, err = xmpp.New(cfg, log, targetCfg)
 	case "apprise":
-		t, err = apprise.New(cfg, log)
+		t, err = apprise.New(cfg, log, targetCfg)
 	default:
 		return nil, errors.New("No such target type")
 	}
@@ -61,6 +59,7 @@ func NewTarget(
 func New(
 	cfg *config.Config,
 	log *zap.Logger,
+	targetCfgs []target.Target,
 ) (*Targets, error) {
 	var err error
 
@@ -68,10 +67,11 @@ func New(
 
 	ts.cfg = cfg
 	ts.log = log
-	ts.targets = make(Types)
+	ts.targetCfgs = targetCfgs
+	ts.targets = make(ITargets)
 
-	for _, tname := range TARGETS {
-		if ts.targets[tname], err = NewTarget(cfg, log, tname); err != nil {
+	for _, tcfg := range ts.targetCfgs {
+		if ts.targets[tcfg.ID], err = NewTarget(cfg, log, tcfg); err != nil {
 			return nil, err
 		}
 	}
@@ -80,8 +80,8 @@ func New(
 }
 
 func (ts *Targets) LoadAll() error {
-	for _, tname := range TARGETS {
-		if err := ts.targets[tname].Load(); err != nil {
+	for _, tcfg := range ts.targetCfgs {
+		if err := ts.targets[tcfg.ID].Load(); err != nil {
 			return err
 		}
 	}
@@ -92,39 +92,37 @@ func (ts *Targets) LoadAll() error {
 func (ts *Targets) RunAll() error {
 	var running []string
 
-	for _, tname := range TARGETS {
-		if err := ts.targets[tname].Run(); err != nil {
+	for _, tcfg := range ts.targetCfgs {
+		if err := ts.targets[tcfg.ID].Run(); err != nil {
 			for _, tnamerunning := range running {
 				ts.targets[tnamerunning].Shutdown()
 			}
 			return err
 		}
-		running = append(running, tname)
+		running = append(running, tcfg.ID)
 	}
 
 	return nil
 }
 
 func (ts *Targets) Execute(
-	name string,
+	id string,
 	m message.Message,
-	args map[string]interface{},
 	appArgs map[string]interface{},
 ) error {
-	return ts.targets[name].Execute(m, args, appArgs)
+	return ts.targets[id].Execute(m, appArgs)
 }
 
 func (ts *Targets) ExecuteAll(
 	m message.Message,
-	args map[string]interface{},
 	appArgs map[string]interface{},
 ) (bool, map[string]error) {
 	var errs map[string]error = make(map[string]error)
 	var ok bool = true
 
-	for _, tname := range TARGETS {
-		if err := ts.targets[tname].Execute(m, args, appArgs); err != nil {
-			errs[tname] = err
+	for _, tcfg := range ts.targetCfgs {
+		if err := ts.targets[tcfg.ID].Execute(m, appArgs); err != nil {
+			errs[tcfg.ID] = err
 			ok = false
 		}
 	}
@@ -136,9 +134,9 @@ func (ts *Targets) ShutdownAll() (bool, helpers.Errors) {
 	var errs helpers.Errors = make(helpers.Errors)
 	var ok bool = true
 
-	for _, tname := range TARGETS {
-		if err := ts.targets[tname].Shutdown(); err != nil {
-			errs[tname] = err
+	for _, tcfg := range ts.targetCfgs {
+		if err := ts.targets[tcfg.ID].Shutdown(); err != nil {
+			errs[tcfg.ID] = err
 			ok = false
 		}
 	}
