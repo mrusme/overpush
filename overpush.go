@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -11,10 +13,30 @@ import (
 	"go.uber.org/zap"
 )
 
+var version = "dev"
+
 func init() {
 }
 
 func main() {
+	var showVersion bool
+	var showHelp bool
+
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
+	flag.BoolVar(&showHelp, "help", false, "Show help information")
+	flag.BoolVar(&showHelp, "h", false, "Show help information")
+	flag.Parse()
+
+	if showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if showVersion {
+		fmt.Printf("overpush version %s\n", version)
+		os.Exit(0)
+	}
+
 	var logger *zap.Logger
 	var err error
 
