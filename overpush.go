@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -11,12 +12,23 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func init() {
 }
 
 func main() {
 	var logger *zap.Logger
 	var err error
+
+	if len(os.Args) > 1 {
+		fmt.Printf("Overpush %s (%s) %s\n", version, commit, date)
+		os.Exit(1)
+	}
 
 	config, err := config.Cfg()
 	if err != nil {
@@ -37,6 +49,12 @@ func main() {
 	defer logger.Sync()
 	// TODO: Use sugarLogger
 	// sugar := logger.Sugar()
+
+	logger.Info("Overpush",
+		zap.String("version", version),
+		zap.String("commit", commit),
+		zap.String("date", date),
+	)
 
 	var wrk *worker.Worker
 	if wrk, err = worker.New(&config, logger); err != nil {
