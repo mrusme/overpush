@@ -84,12 +84,12 @@ func (api *API) LoadMiddlewares() error {
 	api.app.Use(requestid.New())
 	api.app.Use(cors.New())
 
-	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.DefaultLivenessEndpoint),
-		healthcheck.NewHealthChecker())
-	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.DefaultReadinessEndpoint),
-		healthcheck.NewHealthChecker())
-	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.DefaultStartupEndpoint),
-		healthcheck.NewHealthChecker())
+	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.LivenessEndpoint),
+		healthcheck.New())
+	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.ReadinessEndpoint),
+		healthcheck.New())
+	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.StartupEndpoint),
+		healthcheck.New())
 
 	limiterCfg := limiter.Config{
 		Next: func(c fiber.Ctx) bool {
