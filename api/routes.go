@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/go-playground/validator/v10"
@@ -256,9 +257,10 @@ func handler(api *API) func(c fiber.Ctx) error {
 			})
 		}
 
+		task := asynq.NewTask("message", payload, asynq.MaxRetry(5), asynq.Timeout(30*time.Minute))
 		if api.cfg.Testing == false {
 			api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
-			_, err = api.redis.Enqueue(asynq.NewTask("message", payload))
+			_, err = api.redis.Enqueue(task)
 			if err != nil {
 				return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
 					"error":   err.Error(),
@@ -282,7 +284,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 
 			wrk.Run()
 
-			wrk.HandleMessage(context.Background(), asynq.NewTask("message", payload))
+			wrk.HandleMessage(context.Background(), task)
 		}
 
 		if viaSubmit == false {

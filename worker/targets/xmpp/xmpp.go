@@ -51,23 +51,33 @@ func (t *XMPP) Load() error {
 	}
 
 	t.jabberOpts = goxmpp.Options{
-		Host:          xmppServer,
-		User:          xmppUsername,
-		Password:      xmppPassword,
-		NoTLS:         !xmppTLS,
-		Debug:         false,
-		Session:       true,
-		Status:        "xa",
-		StatusMessage: "Pushing over ...",
+		Host:                xmppServer,
+		User:                xmppUsername,
+		Password:            xmppPassword,
+		NoTLS:               !xmppTLS,
+		Debug:               false,
+		Session:             true,
+		Status:              "xa",
+		StatusMessage:       "Pushing over ...",
+		PeriodicServerPings: true,
 	}
 
 	return nil
 }
 
 func (t *XMPP) Run() error {
+	t.log.Info("Run target: XMPP")
+
+	return t.reconnect()
+}
+
+func (t *XMPP) reconnect() error {
 	var err error
 
-	t.log.Info("Run target: XMPP")
+	if t.jabber != nil {
+		t.log.Debug("XMPP close existing client")
+		t.jabber.Close()
+	}
 
 	t.log.Debug("XMPP connect to server ...",
 		zap.String("Host", t.jabberOpts.Host))
@@ -89,6 +99,15 @@ func (t *XMPP) Execute(
 
 	destinationUsername := appArgs["destination"].(string)
 
+	_, err = t.jabber.SendKeepAlive()
+	if err != nil {
+		t.log.Error("XMPP failed to SendKeepAlive, attempting reconnect ...",
+			zap.Error(err))
+		if err = t.reconnect(); err != nil {
+			return err
+		}
+	}
+
 	_, err = t.jabber.Send(goxmpp.Chat{
 		Remote: destinationUsername,
 		Type:   "chat",
@@ -99,6 +118,9 @@ func (t *XMPP) Execute(
 			zap.Error(err))
 		return err
 	}
+
+	t.log.Debug("XMPP successfully sent message",
+		zap.String("destinationUsername", destinationUsername))
 
 	return nil
 }

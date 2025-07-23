@@ -179,6 +179,10 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		wrk.log.Debug("Worker encountered error for User.GetApplication",
 			zap.Error(err))
+		// Note: Even though this error indicates that the user application was not
+		// found, e.g. because the user deleted it in the meantime, it is still
+		// worth to retry the message, if this came up due to a database related
+		// issue.
 		return err
 	}
 	if m.IsViaSubmit() == false && app.Enable == false {
@@ -191,6 +195,10 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		wrk.log.Debug("Worker encountered error for Target.GetTargetByID",
 			zap.Error(err))
+		// Note: Even though this error indicates that the user target was not
+		// found, e.g. because the user changed it in the meantime, it is still
+		// worth to retry the message, if this came up due to a database related
+		// issue.
 		return err
 	}
 	if m.IsViaSubmit() == false && target.Enable == false {
