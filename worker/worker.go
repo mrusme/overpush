@@ -134,7 +134,7 @@ func (wrk *Worker) Run() error {
 	}
 
 	wrk.redisMux = asynq.NewServeMux()
-	wrk.redisMux.HandleFunc("message", wrk.HandleMessage)
+	wrk.redisMux.HandleFunc("message", asynqHandler(wrk))
 
 	if err := wrk.redis.Run(wrk.redisMux); err != nil {
 		wrk.log.Fatal("Worker failed", zap.Error(err))
@@ -161,6 +161,10 @@ func (wrk *Worker) Shutdown() error {
 
 	wrk.repos.Shutdown()
 	return nil
+}
+
+func asynqHandler(wrk *Worker) func(context.Context, *asynq.Task) error {
+	return wrk.HandleMessage
 }
 
 func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
