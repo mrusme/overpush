@@ -48,12 +48,31 @@ func (t *Apprise) Execute(
 	m message.Message,
 	appArgs map[string]interface{},
 ) error {
-	connection, ok := helpers.GetFieldValue(
-		t.targetCfg.Args["connection"].(string),
-		appArgs,
-	)
-	if !ok {
-		return errors.New("Could not parse connection argument")
+	var connection string = ""
+
+	if val, ok := t.targetCfg.Args["connection"]; ok {
+		connection, ok = helpers.GetFieldValue(
+			val.(string),
+			appArgs,
+		)
+		if !ok {
+			return errors.New("Could not parse connection argument")
+		}
+	} else {
+		return errors.New("Could not get connection string")
+	}
+
+	var prefix string = ""
+	if val, ok := t.targetCfg.Args["prefixDestination"]; ok {
+		if casted, ok := val.(bool); ok {
+			if casted == true {
+				prefix = appArgs["destination"].(string) + " "
+			}
+		} else if casted, ok := val.(string); ok {
+			if casted == "true" {
+				prefix = appArgs["destination"].(string) + " "
+			}
+		}
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -63,7 +82,7 @@ func (t *Apprise) Execute(
 		t.targetCfg.Args["apprise"].(string),
 		"-vv",
 		"-t", m.Title,
-		"-b", m.Message,
+		"-b", (prefix + m.Message),
 		connection,
 	)
 	cmd.Stdout = os.Stdout

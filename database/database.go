@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -101,6 +102,9 @@ func (db *Database) GetApplication(
 	)
 	if err != nil {
 		return application.Application{}, err
+	}
+	if len(applications) == 0 {
+		return application.Application{}, errors.New("Application not found")
 	}
 
 	return applications[0], nil
