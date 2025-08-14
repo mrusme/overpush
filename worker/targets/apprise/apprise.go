@@ -81,7 +81,7 @@ func (t *Apprise) Execute(
 		"python",
 		t.targetCfg.Args["apprise"].(string),
 		"-vv",
-		"-t", m.Title,
+		"-t", (prefix + m.Title),
 		"-b", (prefix + m.Message),
 		connection,
 	)
