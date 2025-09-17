@@ -17,7 +17,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/valyala/fasthttp v1.65.0
 	github.com/vgarvardt/pgx-google-uuid/v5 v5.6.0
-	github.com/xmppo/go-xmpp v0.2.18-0.20250915194747-4948b781cb57
+	github.com/xmppo/go-xmpp v0.2.18-0.20250917175031-f2fc1cd190ae
 	go.uber.org/zap v1.27.0
 )
 
