@@ -95,10 +95,18 @@ func (t *XMPP) reconnect() error {
 func (t *XMPP) Execute(
 	m message.Message,
 	appArgs map[string]interface{},
-) error {
-	var err error
-
+) (err error) {
 	destinationUsername := appArgs["destination"].(string)
+
+	var isMuc bool = false
+	var msgtype string = "chat"
+
+	if destinationIsMUC, ok := appArgs["ismuc"]; ok {
+		isMuc = destinationIsMUC.(bool)
+	}
+	if isMuc {
+		msgtype = "groupchat"
+	}
 
 	_, err = t.jabber.SendKeepAlive()
 	if err != nil {
@@ -109,9 +117,21 @@ func (t *XMPP) Execute(
 		}
 	}
 
+	if isMuc {
+		t.log.Debug("XMPP joining MUC",
+			zap.String("muc", destinationUsername))
+
+		_, err = t.jabber.JoinMUCNoHistory(destinationUsername, "Overpush")
+		if err != nil {
+			t.log.Error("XMPP failed to join MUC",
+				zap.Error(err))
+			return err
+		}
+	}
+
 	_, err = t.jabber.Send(goxmpp.Chat{
 		Remote: destinationUsername,
-		Type:   "chat",
+		Type:   msgtype,
 		Text:   m.ToString(),
 	})
 	if err != nil {

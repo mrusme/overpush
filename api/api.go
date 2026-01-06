@@ -206,6 +206,7 @@ func (api *API) Run() error {
 				Password: api.cfg.Redis.Password,
 			})
 		}
+		// TODO: Move to Shutdown?
 		defer api.redis.Close()
 	}
 
