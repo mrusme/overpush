@@ -75,11 +75,18 @@ func (t *Apprise) Execute(
 		}
 	}
 
+	appriseBin := t.targetCfg.Args["apprise"].(string)
+	t.log.Debug("Apprise executing:",
+		zap.String("appriseBin", appriseBin),
+		zap.String("-t", (prefix+m.Title)),
+		zap.String("-b", (prefix+m.Message)),
+		zap.String("connection", connection),
+	)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	cmd := exec.CommandContext(
 		ctx,
 		"python",
-		t.targetCfg.Args["apprise"].(string),
+		appriseBin,
 		"-vv",
 		"-t", (prefix + m.Title),
 		"-b", (prefix + m.Message),
