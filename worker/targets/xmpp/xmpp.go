@@ -2,6 +2,7 @@ package xmpp
 
 import (
 	"crypto/tls"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -96,7 +97,10 @@ func (t *XMPP) Execute(
 	m message.Message,
 	appArgs map[string]interface{},
 ) (err error) {
-	destinationUsername := appArgs["destination"].(string)
+	destinationUsername, ok := appArgs["destination"].(string)
+	if !ok || destinationUsername == "" {
+		return errors.New("could not get destination argument")
+	}
 
 	var isMuc bool = false
 	var msgtype string = "chat"
@@ -118,8 +122,7 @@ func (t *XMPP) Execute(
 	}
 
 	if isMuc {
-		t.log.Debug("XMPP joining MUC",
-			zap.String("muc", destinationUsername))
+		t.log.Debug("XMPP joining MUC")
 
 		_, err = t.jabber.JoinMUCNoHistory(destinationUsername, "Overpush")
 		if err != nil {
@@ -140,8 +143,7 @@ func (t *XMPP) Execute(
 		return err
 	}
 
-	t.log.Debug("XMPP successfully sent message",
-		zap.String("destinationUsername", destinationUsername))
+	t.log.Debug("XMPP successfully sent message")
 
 	return nil
 }

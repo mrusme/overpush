@@ -173,7 +173,7 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 
-	wrk.log.Debug("Working on message", zap.ByteString("payload", t.Payload()))
+	wrk.log.Debug("Working on message")
 
 	app, err := wrk.repos.Application.GetApplication(m.User, m.Token)
 	if err != nil {
@@ -187,7 +187,7 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	}
 	if m.IsViaSubmit() == false && app.Enable == false {
 		wrk.log.Debug("Worker disregarding job, application not enabled",
-			zap.String("Application.Token", app.Token))
+			zap.String("Application.Name", app.Name))
 		return nil
 	}
 
@@ -231,9 +231,8 @@ func (wrk *Worker) HandleMessage(ctx context.Context, t *asynq.Task) error {
 	}
 
 	wrk.log.Debug("Worker executing target",
+		zap.String("Target.ID", target.ID),
 		zap.String("Target.Type", target.Type),
-		zap.Any("Target.Args", target.Args),
-		zap.Any("Application.TargetArgs", app.TargetArgs),
 	)
 
 	if err := wrk.ts.Execute(

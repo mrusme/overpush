@@ -82,6 +82,7 @@ func (api *API) LoadMiddlewares() error {
 		Logger: api.log,
 	}))
 	api.app.Use(requestid.New())
+	api.app.Use(internalGuard())
 	api.app.Use(cors.New())
 
 	api.app.Get(fmt.Sprintf("/_internal/health%s", healthcheck.LivenessEndpoint),

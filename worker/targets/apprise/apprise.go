@@ -1,18 +1,41 @@
 package apprise
 
 import (
+	"bytes"
 	"context"
-	"errors"
-	"os"
+	"fmt"
 	"os/exec"
+	"regexp"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/mrusme/overpush/config"
 	"github.com/mrusme/overpush/helpers"
 	"github.com/mrusme/overpush/models/message"
 	"github.com/mrusme/overpush/models/target"
 	"go.uber.org/zap"
 )
+
+const maxOutputBytes = 64 * 1024
+
+var defaultDestinationPattern = regexp.MustCompile(
+	`^[^\s,?&/\\[:cntrl:]]+$`)
+
+type boundedBuffer struct {
+	buf bytes.Buffer
+}
+
+func (bb *boundedBuffer) Write(p []byte) (int, error) {
+	remaining := maxOutputBytes - bb.buf.Len()
+	if remaining > 0 {
+		if len(p) > remaining {
+			bb.buf.Write(p[:remaining])
+		} else {
+			bb.buf.Write(p)
+		}
+	}
+	return len(p), nil
+}
 
 type Apprise struct {
 	cfg       *config.Config
@@ -44,45 +67,83 @@ func (t *Apprise) Run() error {
 	return nil
 }
 
+func (t *Apprise) validDestination(destination string) (bool, error) {
+	pattern := defaultDestinationPattern
+	if val, ok := t.targetCfg.Args["destination_pattern"].(string); ok &&
+		val != "" {
+		compiled, err := regexp.Compile(val)
+		if err != nil {
+			return false, fmt.Errorf(
+				"target has an invalid destination_pattern: %w",
+				asynq.SkipRetry)
+		}
+		pattern = compiled
+	}
+
+	return destination != "" && pattern.MatchString(destination), nil
+}
+
 func (t *Apprise) Execute(
 	m message.Message,
 	appArgs map[string]interface{},
 ) error {
+	destination, _ := appArgs["destination"].(string)
+
+	ok, err := t.validDestination(destination)
+	if err != nil {
+		t.log.Error("Apprise destination_pattern does not compile",
+			zap.String("Target.ID", t.targetCfg.ID))
+		return err
+	}
+	if !ok {
+		t.log.Error("Apprise destination rejected",
+			zap.String("Target.ID", t.targetCfg.ID))
+		return fmt.Errorf(
+			"destination does not match the target's destination pattern: %w",
+			asynq.SkipRetry)
+	}
+
 	var connection string = ""
 
-	if val, ok := t.targetCfg.Args["connection"]; ok {
+	if val, ok := t.targetCfg.Args["connection"].(string); ok {
 		connection, ok = helpers.GetFieldValue(
-			val.(string),
+			val,
 			appArgs,
 		)
 		if !ok {
-			return errors.New("Could not parse connection argument")
+			return fmt.Errorf("could not parse connection argument: %w",
+				asynq.SkipRetry)
 		}
 	} else {
-		return errors.New("Could not get connection string")
+		return fmt.Errorf("could not get connection string: %w",
+			asynq.SkipRetry)
 	}
 
 	var prefix string = ""
 	if val, ok := t.targetCfg.Args["prefixDestination"]; ok {
 		if casted, ok := val.(bool); ok {
 			if casted == true {
-				prefix = appArgs["destination"].(string) + " "
+				prefix = destination + " "
 			}
 		} else if casted, ok := val.(string); ok {
 			if casted == "true" {
-				prefix = appArgs["destination"].(string) + " "
+				prefix = destination + " "
 			}
 		}
 	}
 
-	appriseBin := t.targetCfg.Args["apprise"].(string)
-	t.log.Debug("Apprise executing:",
+	appriseBin, ok2 := t.targetCfg.Args["apprise"].(string)
+	if !ok2 || appriseBin == "" {
+		return fmt.Errorf("could not get apprise binary path: %w",
+			asynq.SkipRetry)
+	}
+
+	t.log.Debug("Apprise executing",
+		zap.String("Target.ID", t.targetCfg.ID),
 		zap.String("appriseBin", appriseBin),
-		zap.String("-t", (prefix+m.Title)),
-		zap.String("-b", (prefix+m.Message)),
-		zap.String("connection", connection),
 	)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	cmd := exec.CommandContext(
 		ctx,
 		"python",
@@ -92,14 +153,24 @@ func (t *Apprise) Execute(
 		"-b", (prefix + m.Message),
 		connection,
 	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	output := new(boundedBuffer)
+	cmd.Stdout = output
+	cmd.Stderr = output
 
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
 	if err := cmd.Wait(); err != nil {
+		redacted := bytes.ReplaceAll(
+			output.buf.Bytes(),
+			[]byte(connection),
+			[]byte("<connection>"),
+		)
+		t.log.Error("Apprise failed",
+			zap.String("Target.ID", t.targetCfg.ID),
+			zap.ByteString("output", redacted),
+		)
 		return err
 	}
 

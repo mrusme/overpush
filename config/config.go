@@ -142,6 +142,7 @@ func (cfg *Config) GetApplication(userKey string, token string) (application.App
 		if user.Key == userKey {
 			for _, app := range user.Applications {
 				if app.Token == token {
+					app.Confirmed = true
 					return app, nil
 				}
 			}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Jeffail/gabs/v2"
@@ -21,6 +20,14 @@ import (
 	"github.com/mrusme/overpush/worker"
 	"go.uber.org/zap"
 )
+
+func cformatError(c fiber.Ctx, field string, err error) error {
+	return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+		"error":   fmt.Sprintf("custom format field %s: %s", field, err.Error()),
+		"status":  0,
+		"request": requestid.FromContext(c),
+	})
+}
 
 func handler(api *API) func(c fiber.Ctx) error {
 	return func(c fiber.Ctx) error {
@@ -42,10 +49,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 		if c.Route().Path == "/1/messages.json" ||
 			c.Route().Path == "/_internal/submit/:token" {
 			if c.Route().Path == "/_internal/submit/:token" {
-				api.log.Debug("Request received via submit",
-					zap.String("IP", c.IP()),
-					zap.Strings("IPs", c.IPs()),
-				)
+				api.log.Debug("Request received via submit")
 				viaSubmit = true
 			}
 
@@ -86,8 +90,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 			})
 		}
 
-		api.log.Debug("Retrieving user from token ...",
-			zap.String("token", token))
+		api.log.Debug("Retrieving user from token ...")
 		user, err = api.repos.User.GetUserFromToken(token)
 		if err != nil ||
 			(viaSubmit == false && user.Enable == false) {
@@ -99,12 +102,11 @@ func handler(api *API) func(c fiber.Ctx) error {
 			})
 		}
 
-		api.log.Debug("Retrieving application from User.Key and token ...",
-			zap.String("User.Key", user.Key),
-			zap.String("token", token))
+		api.log.Debug("Retrieving application from User.Key and token ...")
 		application, err = api.repos.Application.GetApplication(user.Key, token)
 		if err != nil ||
-			(viaSubmit == false && application.Enable == false) {
+			(viaSubmit == false &&
+				(application.Enable == false || application.Confirmed == false)) {
 			return c.Status(fiber.ErrNotFound.Code).JSON(fiber.Map{
 				"error":   "No active application with supplied token",
 				"status":  0,
@@ -112,7 +114,6 @@ func handler(api *API) func(c fiber.Ctx) error {
 			})
 		}
 
-		var input strings.Builder
 		var pretty []byte
 
 		if appFormat == "pushover" {
@@ -136,25 +137,10 @@ func handler(api *API) func(c fiber.Ctx) error {
 		}
 
 		if viaSubmit == false {
-			input.WriteString("--- HEADERS --------------------------------------------------------------------\n")
-			for k, v := range c.GetReqHeaders() {
-				input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
-			}
-			input.WriteString("\n")
-
-			input.WriteString("--- QUERIES --------------------------------------------------------------------\n")
-			for k, v := range c.Queries() {
-				input.WriteString(fmt.Sprintf("%s: %s\n", k, v))
-			}
-			input.WriteString("\n")
-
-			input.WriteString("--- BODY -----------------------------------------------------------------------\n")
-			input.WriteString(string(pretty))
-
 			if err = api.repos.Application.SaveInput(
 				"No need when DB",
 				token,
-				input.String(),
+				formatInput(c.GetReqHeaders(), c.Queries(), pretty),
 			); err != nil {
 				api.log.Error("Application input not saved",
 					zap.Error(err))
@@ -172,20 +158,34 @@ func handler(api *API) func(c fiber.Ctx) error {
 			msg.Token = token
 			msg.User = user.Key
 
-			msg.Attachment, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.Attachment)
+			cf := application.CustomFormat
 
-			msg.AttachmentBase64, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.AttachmentBase64)
+			msg.Attachment, found, err = cf.GetValue(locations, cf.Attachment)
+			if err != nil {
+				return cformatError(c, "Attachment", err)
+			}
 
-			msg.AttachmentType, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.AttachmentType)
+			msg.AttachmentBase64, found, err = cf.GetValue(
+				locations, cf.AttachmentBase64)
+			if err != nil {
+				return cformatError(c, "AttachmentBase64", err)
+			}
 
-			msg.Device, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.Device)
+			msg.AttachmentType, found, err = cf.GetValue(
+				locations, cf.AttachmentType)
+			if err != nil {
+				return cformatError(c, "AttachmentType", err)
+			}
 
-			tmp, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.HTML)
+			msg.Device, found, err = cf.GetValue(locations, cf.Device)
+			if err != nil {
+				return cformatError(c, "Device", err)
+			}
+
+			tmp, found, err = cf.GetValue(locations, cf.HTML)
+			if err != nil {
+				return cformatError(c, "HTML", err)
+			}
 			if found {
 				if tmp == "0" {
 					msg.HTML = 0
@@ -194,11 +194,15 @@ func handler(api *API) func(c fiber.Ctx) error {
 				}
 			}
 
-			msg.Message, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.Message)
+			msg.Message, found, err = cf.GetValue(locations, cf.Message)
+			if err != nil {
+				return cformatError(c, "Message", err)
+			}
 
-			tmp, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.Priority)
+			tmp, found, err = cf.GetValue(locations, cf.Priority)
+			if err != nil {
+				return cformatError(c, "Priority", err)
+			}
 			if found {
 				msg.Priority, _ = strconv.Atoi(tmp)
 				if msg.Priority < -2 || msg.Priority > 2 {
@@ -206,14 +210,18 @@ func handler(api *API) func(c fiber.Ctx) error {
 				}
 			}
 
-			tmp, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.TTL)
+			tmp, found, err = cf.GetValue(locations, cf.TTL)
+			if err != nil {
+				return cformatError(c, "TTL", err)
+			}
 			if found {
 				msg.TTL, _ = strconv.Atoi(tmp)
 			}
 
-			tmp, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.Timestamp)
+			tmp, found, err = cf.GetValue(locations, cf.Timestamp)
+			if err != nil {
+				return cformatError(c, "Timestamp", err)
+			}
 			if found {
 				dt, err := dateparser.Parse(nil, tmp)
 				if err == nil {
@@ -221,15 +229,20 @@ func handler(api *API) func(c fiber.Ctx) error {
 				}
 			}
 
-			msg.Title, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.Title)
+			msg.Title, found, err = cf.GetValue(locations, cf.Title)
+			if err != nil {
+				return cformatError(c, "Title", err)
+			}
 
-			msg.URL, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.URL)
+			msg.URL, found, err = cf.GetValue(locations, cf.URL)
+			if err != nil {
+				return cformatError(c, "URL", err)
+			}
 
-			msg.URLTitle, found = application.CustomFormat.
-				GetValue(locations, application.CustomFormat.URLTitle)
-
+			msg.URLTitle, found, err = cf.GetValue(locations, cf.URLTitle)
+			if err != nil {
+				return cformatError(c, "URLTitle", err)
+			}
 		}
 
 		api.log.Debug("Validating request...")
@@ -259,7 +272,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 
 		task := asynq.NewTask("message", payload, asynq.MaxRetry(5), asynq.Timeout(30*time.Minute))
 		if api.cfg.Testing == false {
-			api.log.Debug("Enqueueing request", zap.ByteString("payload", payload))
+			api.log.Debug("Enqueueing request")
 			_, err = api.redis.Enqueue(task)
 			if err != nil {
 				return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.Map{
@@ -269,8 +282,7 @@ func handler(api *API) func(c fiber.Ctx) error {
 				})
 			}
 		} else {
-			api.log.Debug("Calling worker directly with request",
-				zap.ByteString("payload", payload))
+			api.log.Debug("Calling worker directly with request")
 
 			wrk, err := worker.New(api.cfg, api.log)
 			if err != nil {

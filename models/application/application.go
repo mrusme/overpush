@@ -2,6 +2,7 @@ package application
 
 type Application struct {
 	Enable       bool
+	Confirmed    bool
 	Token        string
 	Name         string
 	IconPath     string

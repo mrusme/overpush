@@ -5,6 +5,11 @@ Enable = true
 BindIP = "127.0.0.1" # Make it 0.0.0.0 if you want to expose it to the world
                      # without using an HTTPS terminating proxy in front
 Port = 8080
+# Behind a reverse proxy, set the header your proxy uses for the client
+# address, otherwise every request counts as loopback and the rate limiter
+# never applies:
+# ProxyHeader = "X-Real-IP"
+# TrustProxy = true
 
 [Worker]
 Enable = true
@@ -67,4 +72,8 @@ Type = "apprise"
   [Targets.Args]
   Apprise = "/usr/bin/apprise"
   Connection = 'matrixs://my_bot:hunter2@matrix.org:443/{{ arg "destination" }}?format=markdown'
+  # Regular expression the application's Destination must match. Without it, a
+  # default applies that rejects whitespace, commas, ?, &, /, \ and control
+  # characters.
+  Destination_pattern = '^[!#@][A-Za-z0-9._=+-]{1,255}:[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?$'
 

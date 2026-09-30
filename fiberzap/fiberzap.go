@@ -1,16 +1,14 @@
 // Originally from https://gl.oddhunters.com/pub/fiberzap
 // Copyright (apparently) by Ozgur Boru <boruozgur@yandex.com.tr>
 // and "mert" (https://gl.oddhunters.com/mert)
-// Updated for Fiber v3 by github.com/mrusme
+// Updated for Fiber v3 and reduced to non-sensitive fields by github.com/mrusme
 package fiberzap
 
 import (
-	"os"
-	"strconv"
-	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"go.uber.org/zap"
 )
 
@@ -25,72 +23,39 @@ type Config struct {
 	Logger *zap.Logger
 }
 
-func configDefault(config ...Config) Config {
-	return config[0]
-}
-
 // New creates a new middleware handler
 func New(config ...Config) fiber.Handler {
-	var (
-		errPadding  = 15
-		start, stop time.Time
-		once        sync.Once
-		errHandler  fiber.ErrorHandler
-	)
-
-	cfg := configDefault(config...)
+	cfg := config[0]
 
 	return func(c fiber.Ctx) error {
 		if cfg.Next != nil && cfg.Next(c) {
 			return c.Next()
 		}
 
-		once.Do(func() {
-			errHandler = c.App().Config().ErrorHandler
-			stack := c.App().Stack()
-			for m := range stack {
-				for r := range stack[m] {
-					if len(stack[m][r].Path) > errPadding {
-						errPadding = len(stack[m][r].Path)
-					}
-				}
-			}
-		})
-
-		start = time.Now()
+		start := time.Now()
 
 		chainErr := c.Next()
 
 		if chainErr != nil {
-			if err := errHandler(c, chainErr); err != nil {
+			if err := c.App().Config().ErrorHandler(c, chainErr); err != nil {
 				_ = c.SendStatus(fiber.StatusInternalServerError)
 			}
 		}
 
-		stop = time.Now()
-
 		fields := []zap.Field{
-			zap.Namespace("context"),
-			zap.String("pid", strconv.Itoa(os.Getpid())),
-			zap.String("time", stop.Sub(start).String()),
-			zap.Object("response", Resp(c.Response())),
-			zap.Object("request", Req(c)),
+			zap.String("method", c.Method()),
+			zap.String("route", c.Route().Path),
+			zap.Int("status", c.Response().StatusCode()),
+			zap.Duration("duration", time.Since(start)),
+			zap.String("request", requestid.FromContext(c)),
 		}
 
-		if u := c.Locals("userId"); u != nil {
-			fields = append(fields, zap.Uint("userId", u.(uint)))
-		}
-
-		formatErr := ""
 		if chainErr != nil {
-			formatErr = chainErr.Error()
-			fields = append(fields, zap.String("error", formatErr))
-			cfg.Logger.With(fields...).Error(formatErr)
-
+			cfg.Logger.Error(chainErr.Error(), fields...)
 			return nil
 		}
 
-		cfg.Logger.With(fields...).Info("api.request")
+		cfg.Logger.Info("api.request", fields...)
 
 		return nil
 	}

@@ -24,7 +24,7 @@ type Database struct {
 }
 
 var (
-	APPLICATION_FIELDS = "enable,token,name,icon_path,format,custom_format,encryption_type,encryption_recipients,encrypt_title,encrypt_message,encrypt_attachment,target_id as target,target_args"
+	APPLICATION_FIELDS = "enable,(confirmed_at IS NOT NULL) as confirmed,token,name,icon_path,format,custom_format,encryption_type,encryption_recipients,encrypt_title,encrypt_message,encrypt_attachment,target_id as target,target_args"
 	TARGET_FIELDS      = "id,enable,type,args"
 )
 
