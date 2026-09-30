@@ -6,21 +6,23 @@ database/database.go: the cancel function returned by context.WithTimeout should
 database/database.go: the cancel function returned by context.WithTimeout should be called, not discarded, to avoid a context leak
 database/database.go: the cancel function returned by context.WithTimeout should be called, not discarded, to avoid a context leak
 database/database.go: the cancel function returned by context.WithTimeout should be called, not discarded, to avoid a context leak
+helpers/helpers.go: fmt.Sprintf call needs 2 args but has 3 args
+helpers/helpers.go: result of fmt.Sprintf call not used
 models/message/message.go: struct field AttachmentBase64 repeats json tag "attachment" also at message.go:10
-models/message/message.go: struct field tag `json:"attachment_type",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
-models/message/message.go: struct field tag `json:"attachment",validate:"base64"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
+models/message/message.go: struct field tag `json:"_internal",validate:"-"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"attachment",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
+models/message/message.go: struct field tag `json:"attachment",validate:"base64"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
+models/message/message.go: struct field tag `json:"attachment_type",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"device",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"html",validate:"min=0,max=1"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
-models/message/message.go: struct field tag `json:"_internal",validate:"-"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"message",validate:"required"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"priority",validate:"min=-2,max=2"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"timestamp",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"title",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"token",validate:"required,printascii"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"ttl",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
-models/message/message.go: struct field tag `json:"url_title",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"url",validate:"http_url"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
+models/message/message.go: struct field tag `json:"url_title",validate:""` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"user",validate:"required,printascii"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 models/message/message.go: struct field tag `json:"via_submit",validate:"-"` not compatible with reflect.StructTag.Get: key:"value" pairs not separated by spaces
 overpush.go: misuse of unbuffered os.Signal channel as argument to signal.Notify
